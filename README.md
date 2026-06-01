@@ -1,4 +1,17 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AI ARENA
+
+Compete to build the most efficient AI workflows.
+
+## Database (Challenge #1 MVP)
+
+Postgres + Drizzle ORM. See [docs/DATABASE.md](docs/DATABASE.md).
+
+```bash
+cp .env.example .env.local   # set DATABASE_URL
+npm run db:push
+npm run db:seed
+npm run challenge:open         # when ready to accept submissions
+```
 
 ## Getting Started
 
