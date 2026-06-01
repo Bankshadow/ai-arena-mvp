@@ -11,7 +11,7 @@
 | Table | Purpose |
 |-------|---------|
 | `challenges` | Challenge metadata, deadlines, scoring weights |
-| `submissions` | User entries (name + email identity, no auth) |
+| `submissions` | User entries (name + email identity, no auth); optional `role`, `workflow_notes` |
 | `scores` | AI Judge / computed scores per submission |
 | `waitlist_signups` | Landing page beta waitlist |
 
@@ -37,11 +37,22 @@
    npm run db:seed
    ```
 
-6. (Optional) Open challenge for submissions:
+6. (Optional) Placeholder challenge PDF:
+
+   ```bash
+   npm run challenge:pdf
+   ```
+
+7. (Optional) Open / close submissions:
 
    ```bash
    npm run challenge:open
+   npm run challenge:close
    ```
+
+## GitHub Actions
+
+On push to `main` when `db/**` changes, `.github/workflows/database.yml` runs `db:push` using the `DATABASE_URL` repository secret.
 
 ## Vercel production
 

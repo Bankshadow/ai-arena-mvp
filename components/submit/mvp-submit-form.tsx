@@ -11,7 +11,6 @@ import {
 import { Nav } from "@/components/Nav";
 import { DEFAULT_CHALLENGE_SLUG } from "@/lib/constants";
 import { saveSubmission } from "@/lib/client/submissions";
-import { appendWorkflowNotes } from "@/lib/workflows/format-workflow";
 import { validateSubmissionForm } from "@/lib/validations/submission";
 
 const ROLES = ["AI Builder", "Prompt Engineer", "Developer", "Enterprise", "Curious"];
@@ -128,7 +127,8 @@ export function MvpSubmitForm({
       startTransition(async () => {
         const result = await submitChallengeEntry({
           ...zodResult.data!,
-          promptUsed: appendWorkflowNotes(zodResult.data!.promptUsed, form.workflowNotes),
+          role: form.role.trim(),
+          workflowNotes: form.workflowNotes.trim() || undefined,
         });
 
         if (result.success) {

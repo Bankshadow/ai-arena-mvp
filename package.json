@@ -13,6 +13,8 @@
     "db:seed": "tsx db/seed.ts",
     "db:studio": "drizzle-kit studio",
     "challenge:open": "tsx scripts/open-challenge.ts",
+    "challenge:close": "tsx scripts/close-challenge.ts",
+    "challenge:pdf": "tsx scripts/generate-challenge-pdf.ts",
     "judge:pending": "tsx scripts/score-pending.ts"
   },
   "dependencies": {

@@ -11,6 +11,7 @@ type ScoredSubmission = {
   modelUsed: string;
   estimatedCostUsd: string;
   promptUsed: string;
+  workflowNotes: string | null;
   qualityScore: number;
   finalScore: string;
 };
@@ -53,6 +54,7 @@ export async function getTopWorkflowsByChallengeSlug(
       modelUsed: submissions.modelUsed,
       estimatedCostUsd: submissions.estimatedCostUsd,
       promptUsed: submissions.promptUsed,
+      workflowNotes: submissions.workflowNotes,
       qualityScore: scores.qualityScore,
       finalScore: scores.finalScore,
     })
@@ -74,7 +76,8 @@ export async function getTopWorkflowsByChallengeSlug(
       row.modelUsed,
       parseFloat(row.estimatedCostUsd),
       row.qualityScore,
-      row.promptUsed
+      row.promptUsed,
+      row.workflowNotes
     )
   );
 }

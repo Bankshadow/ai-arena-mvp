@@ -36,6 +36,8 @@ export const submissions = pgTable(
       .references(() => challenges.id, { onDelete: "cascade" }),
     displayName: text("display_name").notNull(),
     email: text("email").notNull(),
+    role: text("role"),
+    workflowNotes: text("workflow_notes"),
     promptUsed: text("prompt_used").notNull(),
     modelUsed: text("model_used").notNull(),
     estimatedCostUsd: numeric("estimated_cost_usd", { precision: 8, scale: 4 }).notNull(),

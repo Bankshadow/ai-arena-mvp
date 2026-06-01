@@ -105,12 +105,17 @@ export async function submitChallengeEntry(
     };
   }
 
+  const workflowNotes = input.workflowNotes?.trim() || null;
+  const role = input.role?.trim() || null;
+
   const [row] = await db
     .insert(submissions)
     .values({
       challengeId: challenge.id,
       displayName: input.displayName.trim(),
       email,
+      role,
+      workflowNotes,
       promptUsed: input.promptUsed,
       modelUsed: input.modelUsed,
       estimatedCostUsd: input.estimatedCostUsd.toFixed(4),

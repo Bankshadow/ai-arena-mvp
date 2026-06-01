@@ -4,6 +4,8 @@ export const submissionFormSchema = z.object({
   challengeSlug: z.string().min(1),
   displayName: z.string().trim().min(2, "Name must be at least 2 characters."),
   email: z.string().trim().email("Enter a valid email address."),
+  role: z.string().trim().optional(),
+  workflowNotes: z.string().trim().optional(),
   promptUsed: z.string().trim().min(10, "Prompt must be at least 10 characters."),
   modelUsed: z.string().trim().min(1, "Model is required."),
   estimatedCostUsd: z.coerce.number().min(0, "Cost cannot be negative."),

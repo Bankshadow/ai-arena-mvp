@@ -62,9 +62,12 @@ export function toWorkflowCard(
   modelUsed: string,
   costUsd: number,
   qualityScore: number,
-  promptUsed: string
+  promptUsed: string,
+  workflowNotes?: string | null
 ): WorkflowCard {
-  const { prompt, notes } = splitPromptAndNotes(promptUsed);
+  const embedded = splitPromptAndNotes(promptUsed);
+  const notes = workflowNotes?.trim() || embedded.notes;
+  const prompt = embedded.notes && !workflowNotes?.trim() ? embedded.prompt : promptUsed;
   return {
     rank,
     title: rank === 1 ? `${displayName}'s winning workflow` : `${displayName}'s workflow`,
