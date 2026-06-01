@@ -1,47 +1,124 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useState, type CSSProperties, type ReactNode } from "react";
 
 const NAV_LINKS = [
-  { href: "#problem", label: "Problem" },
+  { href: "#pain", label: "Why" },
   { href: "#analogy", label: "Philosophy" },
   { href: "#how-it-works", label: "How it works" },
   { href: "#challenge", label: "Challenge" },
   { href: "#leaderboard", label: "Leaderboard" },
+  { href: "#audience", label: "Who it's for" },
+  { href: "#faq", label: "FAQ" },
+];
+
+const PAIN_CARDS = [
+  {
+    title: "Token costs are rising",
+    body: "Every extra call adds up. Teams burn budget on retries, long contexts, and overbuilt chains.",
+  },
+  {
+    title: "Context limits slow teams down",
+    body: "Large inputs force chunking hacks and quality tradeoffs. Efficiency becomes an afterthought.",
+  },
+  {
+    title: "Prompt quality is inconsistent",
+    body: "Same task, wildly different outputs. Without benchmarks, nobody knows what “good” costs.",
+  },
+  {
+    title: "No one knows the most cost-efficient workflow",
+    body: "There's no public scoreboard for quality per dollar. The best builders stay invisible.",
+  },
 ];
 
 const STEPS = [
   {
     num: "01",
-    title: "Challenge",
-    desc: "A real-world task drops. Same inputs, same constraints — everyone starts equal.",
-    icon: "◈",
+    title: "Pick a challenge",
+    desc: "Choose a real task with fixed inputs, budget caps, and scoring rules.",
   },
   {
     num: "02",
-    title: "Workflow",
-    desc: "Design your pipeline: models, tools, routing, and cost controls. Ship your best architecture.",
-    icon: "◇",
+    title: "Build a prompt or workflow",
+    desc: "Design your pipeline — models, tools, routing — to maximize results per token.",
   },
   {
     num: "03",
-    title: "Score",
-    desc: "We benchmark latency, token spend, accuracy, and reliability. Efficiency wins.",
-    icon: "◎",
+    title: "Submit your result",
+    desc: "Run against the same dataset as everyone else. Your cost and output are logged.",
   },
   {
     num: "04",
-    title: "Leaderboard",
-    desc: "Climb the ranks. Learn from top workflows. Iterate until you're #1.",
-    icon: "◆",
+    title: "AI Judge scores quality and cost",
+    desc: "Automated evaluation on accuracy, completeness, and spend. No hype — just numbers.",
+  },
+  {
+    num: "05",
+    title: "Climb the leaderboard",
+    desc: "Rank by composite score. Study top workflows. Iterate and reclaim #1.",
   },
 ];
 
 const LEADERBOARD = [
-  { rank: 1, handle: "nova_ops", score: 98.4, cost: "$0.003", latency: "420ms", delta: "+2.1" },
-  { rank: 2, handle: "graphmind", score: 97.1, cost: "$0.004", latency: "510ms", delta: "+0.8" },
-  { rank: 3, handle: "latentlab", score: 96.8, cost: "$0.003", latency: "480ms", delta: "-0.2" },
-  { rank: 4, handle: "you?", score: "—", cost: "—", latency: "—", delta: "join" },
+  { rank: 1, player: "TokenHunter", quality: 94, cost: "$0.08", score: 96.4 },
+  { rank: 2, player: "AIWizard", quality: 92, cost: "$0.12", score: 94.7 },
+  { rank: 3, player: "PromptKing", quality: 89, cost: "$0.17", score: 91.8 },
+  { rank: 4, player: "You", quality: "--", cost: "--", score: "Join Beta", isYou: true },
+];
+
+const AUDIENCE = [
+  {
+    title: "Prompt Engineers",
+    body: "Prove your prompts win on quality and cost — not just vibes in a doc.",
+  },
+  {
+    title: "AI Engineers",
+    body: "Benchmark workflows, compare architectures, and ship leaner pipelines.",
+  },
+  {
+    title: "Product Teams",
+    body: "De-risk AI features with clear efficiency targets before you scale spend.",
+  },
+  {
+    title: "Enterprises",
+    body: "Identify top talent and standardize cost-aware AI practices across teams.",
+  },
+];
+
+const FAQ_ITEMS = [
+  {
+    q: "Is AI ARENA a prompt competition?",
+    a: "It's a workflow efficiency competition. You can compete with a single prompt or a multi-step pipeline — what matters is hitting the challenge goal while minimizing cost.",
+  },
+  {
+    q: "How is the winner selected?",
+    a: "Each challenge defines a scoring formula (e.g. 80% quality + 20% cost efficiency). Our AI Judge evaluates output quality and tracks your spend. Highest composite score wins.",
+  },
+  {
+    q: "Do I need to connect my own AI account?",
+    a: "For beta, you'll connect your provider API keys so runs are billed to you and costs are measured accurately. Sandbox options may be available for select challenges.",
+  },
+  {
+    q: "When will the first challenge launch?",
+    a: "Executive Summary Battle #1 opens with the beta. Join the waitlist — we'll email you as soon as spots are available.",
+  },
+];
+
+const ROLES = [
+  "AI Builder",
+  "Prompt Engineer",
+  "Developer",
+  "Enterprise",
+  "Curious",
+] as const;
+
+type Role = (typeof ROLES)[number];
+
+const TOKEN_CHIPS = [
+  { value: "1K", color: "from-zinc-600 to-zinc-800", ring: "border-zinc-500/40" },
+  { value: "5K", color: "from-emerald-700 to-emerald-900", ring: "border-emerald-500/50" },
+  { value: "10K", color: "from-amber-600 to-amber-900", ring: "border-amber-500/50" },
+  { value: "25K", color: "from-violet-600 to-violet-900", ring: "border-violet-500/50" },
 ];
 
 function GlowOrb({ className }: { className?: string }) {
@@ -53,13 +130,54 @@ function GlowOrb({ className }: { className?: string }) {
   );
 }
 
+function SectionLabel({ children, accent = "emerald" }: { children: ReactNode; accent?: "emerald" | "violet" | "cyan" }) {
+  const colors = {
+    emerald: "text-emerald-500/80",
+    violet: "text-violet-400/90",
+    cyan: "text-cyan-400/90",
+  };
+  return (
+    <p className={`font-mono text-xs uppercase tracking-[0.2em] ${colors[accent]}`}>
+      {children}
+    </p>
+  );
+}
+
+function TokenChip({
+  value,
+  color,
+  ring,
+  style,
+}: {
+  value: string;
+  color: string;
+  ring: string;
+  style?: CSSProperties;
+}) {
+  return (
+    <div
+      className={`flex h-20 w-20 flex-col items-center justify-center rounded-full border-2 bg-gradient-to-br shadow-lg ${color} ${ring}`}
+      style={style}
+    >
+      <span className="text-[10px] font-medium uppercase tracking-wider text-white/60">TOK</span>
+      <span className="font-mono text-lg font-bold text-white">{value}</span>
+    </div>
+  );
+}
+
 export default function Home() {
-  const [email, setEmail] = useState("");
-  const [submitted, setSubmitted] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [openFaq, setOpenFaq] = useState<number | null>(0);
+  const [waitlist, setWaitlist] = useState<{ name: string; email: string; role: Role }>({
+    name: "",
+    email: "",
+    role: ROLES[0],
+  });
 
   function handleWaitlist(e: FormEvent) {
     e.preventDefault();
-    if (email.trim()) setSubmitted(true);
+    alert("Thanks for joining the AI ARENA beta waitlist.");
+    setWaitlist({ name: "", email: "", role: ROLES[0] });
   }
 
   return (
@@ -80,7 +198,8 @@ export default function Home() {
             </span>
             ARENA
           </a>
-          <div className="hidden items-center gap-8 md:flex">
+
+          <div className="hidden items-center gap-6 lg:flex">
             {NAV_LINKS.map((link) => (
               <a
                 key={link.href}
@@ -91,21 +210,64 @@ export default function Home() {
               </a>
             ))}
           </div>
-          <a
-            href="#waitlist"
-            className="rounded-full bg-white px-4 py-2 text-sm font-medium text-black transition hover:bg-zinc-200"
-          >
-            Join waitlist
-          </a>
+
+          <div className="flex items-center gap-3">
+            <a
+              href="#waitlist"
+              className="hidden rounded-full bg-white px-4 py-2 text-sm font-medium text-black transition hover:bg-zinc-200 sm:inline-block"
+            >
+              Join Beta Waitlist
+            </a>
+            <button
+              type="button"
+              className="flex h-10 w-10 items-center justify-center rounded-lg border border-white/10 lg:hidden"
+              onClick={() => setMobileNavOpen((o) => !o)}
+              aria-expanded={mobileNavOpen}
+              aria-label="Toggle menu"
+            >
+              <span className="sr-only">Menu</span>
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                {mobileNavOpen ? (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                ) : (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                )}
+              </svg>
+            </button>
+          </div>
         </nav>
+
+        {mobileNavOpen && (
+          <div className="border-t border-white/[0.06] bg-[#030303]/95 px-6 py-4 lg:hidden">
+            <div className="flex flex-col gap-3">
+              {NAV_LINKS.map((link) => (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  className="text-sm text-zinc-300"
+                  onClick={() => setMobileNavOpen(false)}
+                >
+                  {link.label}
+                </a>
+              ))}
+              <a
+                href="#waitlist"
+                className="mt-2 rounded-full bg-white px-4 py-2.5 text-center text-sm font-medium text-black"
+                onClick={() => setMobileNavOpen(false)}
+              >
+                Join Beta Waitlist
+              </a>
+            </div>
+          </div>
+        )}
       </header>
 
       <main className="relative z-10">
         {/* 1. Hero */}
         <section className="flex min-h-screen flex-col items-center justify-center px-6 pt-24 pb-20 text-center">
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-1.5 text-xs text-zinc-400">
+          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/[0.06] px-4 py-1.5 text-xs text-emerald-300/90">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_var(--accent-glow)]" />
-            Early access opening soon
+            Beta challenge launching soon
           </div>
 
           <h1 className="max-w-4xl text-5xl font-semibold leading-[1.08] tracking-tight sm:text-6xl md:text-7xl">
@@ -116,24 +278,22 @@ export default function Home() {
             AI workflows
           </h1>
 
-          <p className="mt-6 max-w-2xl text-lg leading-relaxed text-zinc-400">
-            AI ARENA is where builders face off on real challenges — designing lean pipelines that
-            win on speed, cost, and quality. Not who prompts best. Who engineers best.
+          <p className="mt-6 max-w-2xl text-lg leading-relaxed text-zinc-400 sm:text-xl">
+            Solve the same challenge. Use fewer tokens. Get better results. Climb the leaderboard.
           </p>
 
           <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
             <a
               href="#waitlist"
-              className="group relative overflow-hidden rounded-full bg-emerald-500 px-8 py-3.5 text-sm font-semibold text-black transition hover:bg-emerald-400"
+              className="rounded-full bg-emerald-500 px-8 py-3.5 text-sm font-semibold text-black transition hover:bg-emerald-400"
             >
-              <span className="relative z-10">Get early access</span>
-              <span className="absolute inset-0 bg-gradient-to-r from-emerald-400 to-cyan-400 opacity-0 transition group-hover:opacity-100" />
+              Join Beta Waitlist
             </a>
             <a
-              href="#how-it-works"
+              href="#challenge"
               className="rounded-full border border-white/15 px-8 py-3.5 text-sm font-medium text-zinc-300 transition hover:border-white/30 hover:bg-white/[0.04]"
             >
-              See how it works
+              View First Challenge
             </a>
           </div>
 
@@ -149,37 +309,22 @@ export default function Home() {
           </div>
         </section>
 
-        {/* 2. Problem */}
-        <section id="problem" className="border-t border-white/[0.06] px-6 py-28">
+        {/* 2. Pain Points */}
+        <section id="pain" className="border-t border-white/[0.06] px-6 py-28">
           <div className="mx-auto max-w-6xl">
-            <p className="font-mono text-xs uppercase tracking-[0.2em] text-emerald-500/80">
-              The problem
-            </p>
+            <SectionLabel>Why AI ARENA</SectionLabel>
             <h2 className="mt-4 max-w-3xl text-3xl font-semibold tracking-tight sm:text-4xl md:text-5xl">
-              Everyone&apos;s building AI. Almost no one&apos;s measuring efficiency.
+              AI is powerful. But inefficient AI is expensive.
             </h2>
-            <div className="mt-16 grid gap-6 md:grid-cols-3">
-              {[
-                {
-                  title: "Bloated pipelines",
-                  body: "Teams stack models and agents without benchmarks. Costs balloon. Latency hides in the shadows.",
-                },
-                {
-                  title: "No shared standard",
-                  body: "Blog posts claim wins. There's no arena to prove whose workflow actually performs under pressure.",
-                },
-                {
-                  title: "Talent is invisible",
-                  body: "The best systems engineers can't show skill the way competitive devs do — until now.",
-                },
-              ].map((card) => (
+            <div className="mt-16 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {PAIN_CARDS.map((card) => (
                 <div
                   key={card.title}
-                  className="group rounded-2xl border border-white/[0.08] bg-white/[0.02] p-8 transition hover:border-emerald-500/30 hover:bg-white/[0.04]"
+                  className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-6 transition hover:border-emerald-500/25 hover:bg-white/[0.04]"
                 >
-                  <div className="mb-4 h-px w-12 bg-gradient-to-r from-emerald-500/60 to-transparent" />
-                  <h3 className="text-lg font-medium text-white">{card.title}</h3>
-                  <p className="mt-3 text-sm leading-relaxed text-zinc-400">{card.body}</p>
+                  <div className="mb-4 h-px w-10 bg-gradient-to-r from-emerald-500/60 to-transparent" />
+                  <h3 className="text-base font-medium text-white">{card.title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-zinc-400">{card.body}</p>
                 </div>
               ))}
             </div>
@@ -190,61 +335,49 @@ export default function Home() {
         <section id="analogy" className="border-t border-white/[0.06] px-6 py-28">
           <div className="mx-auto grid max-w-6xl items-center gap-16 lg:grid-cols-2">
             <div>
-              <p className="font-mono text-xs uppercase tracking-[0.2em] text-violet-400/90">
-                The poker analogy
-              </p>
+              <SectionLabel accent="violet">Philosophy</SectionLabel>
               <h2 className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">
-                Same cards. Different players. Skill decides the pot.
+                Token is the chip of AI.
               </h2>
-              <p className="mt-6 text-zinc-400 leading-relaxed">
-                In poker, everyone gets the same hand sometimes — what separates winners is how they
-                play: position, reads, discipline, risk. AI ARENA works the same way.
-              </p>
-              <p className="mt-4 text-zinc-400 leading-relaxed">
-                Every competitor receives the same challenge: identical data, APIs, and limits. Your
-                edge isn&apos;t a bigger model budget. It&apos;s architecture — routing, caching,
-                fallbacks, and ruthless optimization.
-              </p>
-              <ul className="mt-8 space-y-3 text-sm text-zinc-300">
-                {[
-                  "Fixed constraints = fair table",
-                  "Workflow design = your strategy",
-                  "Public scores = the showdown",
-                ].map((item) => (
-                  <li key={item} className="flex items-center gap-3">
-                    <span className="text-emerald-400">♠</span>
-                    {item}
-                  </li>
-                ))}
-              </ul>
+              <div className="mt-6 space-y-4 text-zinc-400 leading-relaxed">
+                <p>
+                  In poker, the best player is not the one who spends the most chips. The best player
+                  maximizes expected value.
+                </p>
+                <p>AI works the same way.</p>
+                <p>
+                  The best workflow is not the most expensive one. It is the one that delivers the
+                  best result with the lowest cost.
+                </p>
+              </div>
             </div>
 
             <div className="relative flex justify-center">
               <div className="animate-float relative w-full max-w-md">
                 <div className="absolute -inset-4 rounded-3xl bg-gradient-to-br from-violet-600/20 to-emerald-600/20 blur-2xl" />
-                <div className="relative rounded-2xl border border-white/10 bg-zinc-900/80 p-8 backdrop-blur-sm">
-                  <div className="flex justify-center gap-3">
-                    {["A♠", "K♦", "Q♣"].map((card, i) => (
-                      <div
-                        key={card}
-                        className="flex h-24 w-16 flex-col items-center justify-center rounded-lg border border-white/20 bg-gradient-to-b from-zinc-800 to-zinc-900 font-mono text-xl shadow-lg"
-                        style={{ transform: `rotate(${(i - 1) * 8}deg) translateY(${i === 1 ? -12 : 0}px)` }}
-                      >
-                        {card}
-                      </div>
+                <div className="relative rounded-2xl border border-white/10 bg-zinc-900/80 p-10 backdrop-blur-sm">
+                  <div className="flex flex-wrap items-end justify-center gap-4">
+                    {TOKEN_CHIPS.map((chip, i) => (
+                      <TokenChip
+                        key={chip.value}
+                        {...chip}
+                        style={{
+                          transform: `rotate(${(i - 1.5) * 12}deg) translateY(${i === 1 || i === 2 ? -8 : 0}px)`,
+                        }}
+                      />
                     ))}
                   </div>
-                  <p className="mt-8 text-center font-mono text-xs text-zinc-500">
-                    SAME CHALLENGE · DIFFERENT WORKFLOWS
+                  <p className="mt-10 text-center font-mono text-xs text-zinc-500">
+                    SPEND FEWER TOKENS · WIN MORE VALUE
                   </p>
-                  <div className="mt-6 space-y-2 border-t border-white/10 pt-6">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-zinc-500">Player A</span>
-                      <span className="text-emerald-400">+$2.4k efficiency</span>
+                  <div className="mt-6 grid grid-cols-2 gap-3 border-t border-white/10 pt-6 text-sm">
+                    <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-3 py-2">
+                      <span className="block text-xs text-zinc-500">High EV</span>
+                      <span className="text-emerald-400">94 quality · $0.08</span>
                     </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-zinc-500">Player B</span>
-                      <span className="text-red-400/80">−$890 waste</span>
+                    <div className="rounded-lg border border-red-500/20 bg-red-500/5 px-3 py-2">
+                      <span className="block text-xs text-zinc-500">Low EV</span>
+                      <span className="text-red-400/90">72 quality · $0.42</span>
                     </div>
                   </div>
                 </div>
@@ -256,30 +389,19 @@ export default function Home() {
         {/* 4. How It Works */}
         <section id="how-it-works" className="border-t border-white/[0.06] px-6 py-28">
           <div className="mx-auto max-w-6xl text-center">
-            <p className="font-mono text-xs uppercase tracking-[0.2em] text-emerald-500/80">
-              How it works
-            </p>
+            <SectionLabel>How it works</SectionLabel>
             <h2 className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">
-              Four moves. One arena.
+              Five steps to the top of the board
             </h2>
           </div>
-          <div className="mx-auto mt-16 grid max-w-6xl gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {STEPS.map((step, i) => (
+          <div className="mx-auto mt-16 grid max-w-6xl gap-4 sm:grid-cols-2 lg:grid-cols-5">
+            {STEPS.map((step) => (
               <div
                 key={step.title}
-                className="relative rounded-2xl border border-white/[0.08] bg-white/[0.02] p-6 text-left"
+                className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-5 text-left"
               >
-                {i < STEPS.length - 1 && (
-                  <span
-                    className="absolute -right-2 top-1/2 z-10 hidden -translate-y-1/2 text-zinc-600 lg:block"
-                    aria-hidden
-                  >
-                    →
-                  </span>
-                )}
-                <span className="font-mono text-2xl text-emerald-500/40">{step.num}</span>
-                <span className="mt-4 block text-2xl text-zinc-600">{step.icon}</span>
-                <h3 className="mt-3 text-lg font-medium">{step.title}</h3>
+                <span className="font-mono text-xl text-emerald-500/50">{step.num}</span>
+                <h3 className="mt-3 text-base font-medium leading-snug">{step.title}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-zinc-400">{step.desc}</p>
               </div>
             ))}
@@ -289,156 +411,257 @@ export default function Home() {
         {/* 5. Sample Challenge */}
         <section id="challenge" className="border-t border-white/[0.06] px-6 py-28">
           <div className="mx-auto max-w-6xl">
-            <div className="flex flex-col gap-12 lg:flex-row lg:items-start lg:justify-between">
-              <div className="max-w-xl">
-                <p className="font-mono text-xs uppercase tracking-[0.2em] text-cyan-400/90">
-                  Sample challenge
-                </p>
-                <h2 className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">
-                  Classify 10k support tickets under $5
-                </h2>
-                <p className="mt-4 text-zinc-400 leading-relaxed">
-                  Route each ticket to the right queue with ≥95% accuracy. Hard cap on total API
-                  spend. P95 latency under 600ms. Submissions run against a hidden holdout set.
-                </p>
+            <SectionLabel accent="cyan">First challenge</SectionLabel>
+            <h2 className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">
+              Executive Summary Battle #1
+            </h2>
+
+            <div className="mt-12 overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.04] to-transparent">
+              <div className="border-b border-white/10 px-6 py-5 sm:px-8">
+                <div className="flex flex-wrap items-center gap-3">
+                  <h3 className="text-xl font-semibold">Executive Summary Battle #1</h3>
+                  <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-0.5 text-xs font-medium text-amber-300">
+                    Beta opening soon
+                  </span>
+                </div>
               </div>
 
-              <div className="w-full max-w-lg shrink-0 rounded-2xl border border-white/10 bg-zinc-950/80 font-mono text-sm shadow-2xl shadow-emerald-500/5">
-                <div className="flex items-center gap-2 border-b border-white/10 px-4 py-3">
-                  <span className="h-2.5 w-2.5 rounded-full bg-red-500/80" />
-                  <span className="h-2.5 w-2.5 rounded-full bg-yellow-500/80" />
-                  <span className="h-2.5 w-2.5 rounded-full bg-emerald-500/80" />
-                  <span className="ml-2 text-xs text-zinc-500">challenge_014.json</span>
-                </div>
-                <pre className="overflow-x-auto p-6 text-xs leading-relaxed text-zinc-300">
-{`{
-  "id": "support-routing-v2",
-  "constraints": {
-    "max_budget_usd": 5.00,
-    "min_accuracy": 0.95,
-    "p95_latency_ms": 600
-  },
-  "inputs": "10,000 labeled tickets",
-  "scoring": [
-    "accuracy",
-    "total_cost",
-    "p95_latency",
-    "reliability"
-  ]
-}`}
-                </pre>
-                <div className="border-t border-white/10 px-4 py-3 text-xs text-zinc-500">
-                  847 builders submitted · closes in 6d
-                </div>
+              <div className="grid gap-px bg-white/[0.06] sm:grid-cols-2 lg:grid-cols-3">
+                {[
+                  { label: "Input", value: "20-page PDF" },
+                  { label: "Goal", value: "Executive summary, key risks, and recommendations" },
+                  { label: "Cost limit", value: "$1.00" },
+                  { label: "Attempts", value: "3" },
+                  { label: "Scoring", value: "80% Quality + 20% Cost Efficiency" },
+                  { label: "Status", value: "Beta opening soon" },
+                ].map((row) => (
+                  <div key={row.label} className="bg-[#030303] px-6 py-5 sm:px-8">
+                    <p className="text-xs font-medium uppercase tracking-wider text-zinc-500">{row.label}</p>
+                    <p className="mt-1 text-sm text-zinc-200">{row.value}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex flex-col items-start justify-between gap-4 border-t border-white/10 px-6 py-6 sm:flex-row sm:items-center sm:px-8">
+                <p className="text-sm text-zinc-500">
+                  Same PDF for every competitor. Prove you can summarize better for less.
+                </p>
+                <a
+                  href="#waitlist"
+                  className="shrink-0 rounded-full bg-white px-6 py-2.5 text-sm font-semibold text-black transition hover:bg-zinc-200"
+                >
+                  Join this challenge
+                </a>
               </div>
             </div>
           </div>
         </section>
 
-        {/* 6. Leaderboard Preview */}
+        {/* 6. Leaderboard */}
         <section id="leaderboard" className="border-t border-white/[0.06] px-6 py-28">
           <div className="mx-auto max-w-6xl">
-            <p className="font-mono text-xs uppercase tracking-[0.2em] text-emerald-500/80">
-              Leaderboard preview
-            </p>
+            <SectionLabel>Leaderboard preview</SectionLabel>
             <h2 className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">
               Where efficiency becomes reputation
             </h2>
 
-            <div className="mt-12 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.02]">
-              <div className="grid grid-cols-[auto_1fr_repeat(3,auto)] gap-4 border-b border-white/10 px-6 py-4 text-xs font-medium uppercase tracking-wider text-zinc-500">
-                <span>#</span>
-                <span>Builder</span>
-                <span className="hidden sm:block">Score</span>
-                <span className="hidden md:block">Cost</span>
-                <span className="hidden lg:block">Latency</span>
-              </div>
-              {LEADERBOARD.map((row) => (
+            <div className="mt-12 overflow-x-auto rounded-2xl border border-white/10 bg-white/[0.02]">
+              <table className="w-full min-w-[520px] text-left text-sm">
+                <thead>
+                  <tr className="border-b border-white/10 text-xs font-medium uppercase tracking-wider text-zinc-500">
+                    <th className="px-6 py-4">Rank</th>
+                    <th className="px-6 py-4">Player</th>
+                    <th className="px-6 py-4">Quality</th>
+                    <th className="px-6 py-4">Cost</th>
+                    <th className="px-6 py-4">Score</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {LEADERBOARD.map((row) => (
+                    <tr
+                      key={row.rank}
+                      className={`border-b border-white/[0.06] last:border-0 ${
+                        row.isYou ? "bg-emerald-500/[0.06]" : "hover:bg-white/[0.02]"
+                      }`}
+                    >
+                      <td className="px-6 py-4">
+                        <span
+                          className={`inline-flex h-8 w-8 items-center justify-center rounded-lg font-mono text-sm ${
+                            row.rank === 1
+                              ? "bg-amber-500/20 text-amber-300"
+                              : row.rank === 2
+                                ? "bg-zinc-400/20 text-zinc-300"
+                                : row.rank === 3
+                                  ? "bg-orange-700/20 text-orange-300"
+                                  : "border border-dashed border-white/20 text-zinc-500"
+                          }`}
+                        >
+                          #{row.rank}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 font-medium">{row.player}</td>
+                      <td className="px-6 py-4 font-mono text-zinc-300">{row.quality}</td>
+                      <td className="px-6 py-4 font-mono text-zinc-400">{row.cost}</td>
+                      <td className="px-6 py-4">
+                        {row.isYou ? (
+                          <a href="#waitlist" className="font-medium text-emerald-400 hover:text-emerald-300">
+                            {row.score}
+                          </a>
+                        ) : (
+                          <span className="font-mono font-medium text-white">{row.score}</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        {/* 7. Audience */}
+        <section id="audience" className="border-t border-white/[0.06] px-6 py-28">
+          <div className="mx-auto max-w-6xl">
+            <SectionLabel>Who it&apos;s for</SectionLabel>
+            <h2 className="mt-4 max-w-3xl text-3xl font-semibold tracking-tight sm:text-4xl">
+              Built for AI builders and cost-conscious teams
+            </h2>
+            <div className="mt-16 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {AUDIENCE.map((card) => (
                 <div
-                  key={row.rank}
-                  className={`grid grid-cols-[auto_1fr_repeat(3,auto)] items-center gap-4 border-b border-white/[0.06] px-6 py-4 last:border-0 ${
-                    row.handle === "you?"
-                      ? "bg-emerald-500/[0.06]"
-                      : "hover:bg-white/[0.02]"
-                  }`}
+                  key={card.title}
+                  className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-6 transition hover:border-white/15 hover:bg-white/[0.04]"
                 >
-                  <span
-                    className={`flex h-8 w-8 items-center justify-center rounded-lg font-mono text-sm ${
-                      row.rank === 1
-                        ? "bg-amber-500/20 text-amber-300"
-                        : row.rank === 2
-                          ? "bg-zinc-400/20 text-zinc-300"
-                          : row.rank === 3
-                            ? "bg-orange-700/20 text-orange-300"
-                            : "border border-dashed border-white/20 text-zinc-500"
-                    }`}
-                  >
-                    {row.rank}
-                  </span>
-                  <div>
-                    <span className="font-medium">{row.handle}</span>
-                    {row.delta !== "join" && (
-                      <span
-                        className={`ml-2 text-xs ${
-                          row.delta.startsWith("+") ? "text-emerald-400" : "text-zinc-500"
-                        }`}
-                      >
-                        {row.delta}
-                      </span>
-                    )}
-                  </div>
-                  <span className="hidden font-mono text-sm text-zinc-300 sm:block">{row.score}</span>
-                  <span className="hidden font-mono text-sm text-zinc-400 md:block">{row.cost}</span>
-                  <span className="hidden font-mono text-sm text-zinc-400 lg:block">{row.latency}</span>
+                  <h3 className="text-lg font-medium">{card.title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-zinc-400">{card.body}</p>
                 </div>
               ))}
             </div>
           </div>
         </section>
 
-        {/* 7. Join Waitlist */}
+        {/* 8. Waitlist */}
         <section id="waitlist" className="border-t border-white/[0.06] px-6 py-28">
-          <div className="mx-auto max-w-2xl text-center">
-            <p className="font-mono text-xs uppercase tracking-[0.2em] text-emerald-500/80">
-              Join the waitlist
-            </p>
-            <h2 className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl md:text-5xl">
-              Claim your seat at the table
+          <div className="mx-auto max-w-lg">
+            <SectionLabel>Join the beta</SectionLabel>
+            <h2 className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">
+              Get early access to the first challenge
             </h2>
             <p className="mt-4 text-zinc-400">
-              Be first to compete when AI ARENA opens. Founding members get early challenges and
-              profile badges.
+              Spots are limited for Executive Summary Battle #1. Tell us who you are — we&apos;ll
+              notify you when beta opens.
             </p>
 
-            {submitted ? (
-              <div className="mt-10 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-6 py-8">
-                <p className="text-lg font-medium text-emerald-300">You&apos;re on the list.</p>
-                <p className="mt-2 text-sm text-zinc-400">
-                  We&apos;ll reach out at <span className="text-white">{email}</span> when spots open.
-                </p>
-              </div>
-            ) : (
-              <form onSubmit={handleWaitlist} className="mt-10 flex flex-col gap-3 sm:flex-row sm:justify-center">
+            <form onSubmit={handleWaitlist} className="mt-10 space-y-4">
+              <div>
+                <label htmlFor="name" className="mb-1.5 block text-xs font-medium text-zinc-400">
+                  Name
+                </label>
                 <input
+                  id="name"
+                  type="text"
+                  required
+                  placeholder="Your name"
+                  value={waitlist.name}
+                  onChange={(e) => setWaitlist((w) => ({ ...w, name: e.target.value }))}
+                  className="h-12 w-full rounded-xl border border-white/15 bg-white/[0.04] px-4 text-sm text-white placeholder:text-zinc-500 outline-none transition focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/20"
+                />
+              </div>
+              <div>
+                <label htmlFor="email" className="mb-1.5 block text-xs font-medium text-zinc-400">
+                  Email
+                </label>
+                <input
+                  id="email"
                   type="email"
                   required
                   placeholder="you@company.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="h-12 min-w-0 flex-1 rounded-full border border-white/15 bg-white/[0.04] px-5 text-sm text-white placeholder:text-zinc-500 outline-none transition focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/20 sm:max-w-xs"
+                  value={waitlist.email}
+                  onChange={(e) => setWaitlist((w) => ({ ...w, email: e.target.value }))}
+                  className="h-12 w-full rounded-xl border border-white/15 bg-white/[0.04] px-4 text-sm text-white placeholder:text-zinc-500 outline-none transition focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/20"
                 />
-                <button
-                  type="submit"
-                  className="h-12 shrink-0 rounded-full bg-white px-8 text-sm font-semibold text-black transition hover:bg-zinc-200"
+              </div>
+              <div>
+                <label htmlFor="role" className="mb-1.5 block text-xs font-medium text-zinc-400">
+                  Role
+                </label>
+                <select
+                  id="role"
+                  value={waitlist.role}
+                  onChange={(e) =>
+                    setWaitlist((w) => ({ ...w, role: e.target.value as Role }))
+                  }
+                  className="h-12 w-full appearance-none rounded-xl border border-white/15 bg-white/[0.04] px-4 text-sm text-white outline-none transition focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/20"
                 >
-                  Join waitlist
-                </button>
-              </form>
-            )}
+                  {ROLES.map((role) => (
+                    <option key={role} value={role} className="bg-zinc-900">
+                      {role}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <button
+                type="submit"
+                className="h-12 w-full rounded-full bg-emerald-500 text-sm font-semibold text-black transition hover:bg-emerald-400"
+              >
+                Join Beta Waitlist
+              </button>
+            </form>
 
-            <p className="mt-6 text-xs text-zinc-600">
-              No spam. Unsubscribe anytime. By joining you agree to challenge the status quo.
+            <p className="mt-6 text-center text-xs text-zinc-600">
+              No spam. We&apos;ll only email you about beta access and challenge launches.
             </p>
+          </div>
+        </section>
+
+        {/* 9. FAQ */}
+        <section id="faq" className="border-t border-white/[0.06] px-6 py-28">
+          <div className="mx-auto max-w-3xl">
+            <SectionLabel>FAQ</SectionLabel>
+            <h2 className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">
+              Common questions
+            </h2>
+            <div className="mt-12 divide-y divide-white/[0.08] rounded-2xl border border-white/10 bg-white/[0.02]">
+              {FAQ_ITEMS.map((item, i) => {
+                const isOpen = openFaq === i;
+                return (
+                  <div key={item.q}>
+                    <button
+                      type="button"
+                      className="flex w-full items-center justify-between gap-4 px-6 py-5 text-left text-sm font-medium transition hover:bg-white/[0.02] sm:text-base"
+                      onClick={() => setOpenFaq(isOpen ? null : i)}
+                      aria-expanded={isOpen}
+                    >
+                      {item.q}
+                      <span
+                        className={`shrink-0 text-zinc-500 transition-transform ${isOpen ? "rotate-45" : ""}`}
+                        aria-hidden
+                      >
+                        +
+                      </span>
+                    </button>
+                    {isOpen && (
+                      <p className="px-6 pb-5 text-sm leading-relaxed text-zinc-400">{item.a}</p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
+        {/* 10. Final CTA */}
+        <section className="border-t border-white/[0.06] px-6 py-28">
+          <div className="mx-auto max-w-3xl rounded-3xl border border-white/10 bg-gradient-to-b from-emerald-500/[0.08] to-transparent px-8 py-16 text-center sm:px-12">
+            <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+              Ready to compete in the first AI efficiency challenge?
+            </h2>
+            <a
+              href="#waitlist"
+              className="mt-8 inline-flex rounded-full bg-white px-8 py-3.5 text-sm font-semibold text-black transition hover:bg-zinc-200"
+            >
+              Join Beta Waitlist
+            </a>
           </div>
         </section>
       </main>
@@ -446,15 +669,15 @@ export default function Home() {
       <footer className="relative z-10 border-t border-white/[0.06] px-6 py-10">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 sm:flex-row">
           <span className="font-mono text-xs tracking-widest text-zinc-500">AI ARENA © 2026</span>
-          <div className="flex gap-6 text-xs text-zinc-500">
-            <a href="#" className="hover:text-zinc-300">
-              Twitter
+          <div className="flex flex-wrap justify-center gap-6 text-xs text-zinc-500">
+            <a href="#challenge" className="hover:text-zinc-300">
+              Challenges
             </a>
-            <a href="#" className="hover:text-zinc-300">
-              Discord
+            <a href="#waitlist" className="hover:text-zinc-300">
+              Waitlist
             </a>
-            <a href="#" className="hover:text-zinc-300">
-              GitHub
+            <a href="#faq" className="hover:text-zinc-300">
+              FAQ
             </a>
           </div>
         </div>

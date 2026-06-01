@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "AI ARENA — Compete to build the most efficient AI workflows",
   description:
-    "Challenge → Workflow → Score → Leaderboard. The competitive platform where builders prove who ships the leanest AI pipelines.",
+    "Solve the same challenge. Use fewer tokens. Get better results. Climb the leaderboard.",
 };
 
 export default function RootLayout({
