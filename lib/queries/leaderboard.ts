@@ -16,7 +16,9 @@ type ScoredRow = {
   displayName: string;
   email: string;
   estimatedCostUsd: string;
+  modelUsed: string;
   qualityScore: number;
+  costEfficiencyScore: number;
   finalScore: string;
   scoredAt: Date;
 };
@@ -60,7 +62,9 @@ function toEntries(rows: ScoredRow[]): LeaderboardEntry[] {
     player: row.displayName,
     qualityScore: row.qualityScore,
     cost: parseFloat(row.estimatedCostUsd),
+    costScore: row.costEfficiencyScore,
     finalScore: parseFloat(row.finalScore),
+    modelUsed: row.modelUsed,
   }));
 }
 
@@ -99,7 +103,9 @@ export async function getLeaderboardByChallengeSlug(
       displayName: submissions.displayName,
       email: submissions.email,
       estimatedCostUsd: submissions.estimatedCostUsd,
+      modelUsed: submissions.modelUsed,
       qualityScore: scores.qualityScore,
+      costEfficiencyScore: scores.costEfficiencyScore,
       finalScore: scores.finalScore,
       scoredAt: scores.scoredAt,
     })

@@ -1,29 +1,68 @@
-import { SubmitForm } from "@/components/submit/submit-form";
-
-export const dynamic = "force-dynamic";
+import { MvpSubmitForm } from "@/components/submit/mvp-submit-form";
 import { DEFAULT_CHALLENGE_SLUG } from "@/lib/constants";
-import { getChallengeBySlug } from "@/lib/queries/challenges";
+import { hasDatabaseUrl } from "@/lib/env";
+import { getChallengeBySlug, parseCostLimit } from "@/lib/queries/challenges";
 
 export default async function SubmitPage() {
-  let challenge = null;
-  let dbError: string | null = null;
+  const slug = DEFAULT_CHALLENGE_SLUG;
+  const fallbackName = "Executive Summary Battle #1";
 
-  try {
-    challenge = await getChallengeBySlug(DEFAULT_CHALLENGE_SLUG);
-    if (!challenge) {
-      dbError =
-        "Challenge not found in database. Run npm run db:push && npm run db:seed.";
-    }
-  } catch {
-    dbError =
-      "Database is not configured. Set DATABASE_URL in .env.local and run npm run db:push.";
+  if (!hasDatabaseUrl()) {
+    return (
+      <MvpSubmitForm
+        challengeName={fallbackName}
+        dbAvailable={false}
+        challengeOpen={false}
+        costLimit={1}
+        maxAttempts={3}
+        statusLabel="Demo"
+      />
+    );
   }
 
-  return (
-    <SubmitForm
-      challenge={challenge}
-      dbError={dbError}
-      challengeSlug={DEFAULT_CHALLENGE_SLUG}
-    />
-  );
+  try {
+    const challenge = await getChallengeBySlug(slug);
+    if (!challenge) {
+      return (
+        <MvpSubmitForm
+          challengeName={fallbackName}
+          dbAvailable={false}
+          challengeOpen={false}
+          costLimit={1}
+          maxAttempts={3}
+          statusLabel="Not found"
+        />
+      );
+    }
+
+    const statusLabel =
+      challenge.status === "open"
+        ? "Open"
+        : challenge.status === "closed"
+          ? "Closed"
+          : "Beta";
+
+    return (
+      <MvpSubmitForm
+        challengeSlug={challenge.slug}
+        challengeName={challenge.name}
+        dbAvailable
+        challengeOpen={challenge.status === "open"}
+        costLimit={parseCostLimit(challenge.costLimitUsd)}
+        maxAttempts={challenge.maxAttempts}
+        statusLabel={statusLabel}
+      />
+    );
+  } catch {
+    return (
+      <MvpSubmitForm
+        challengeName={fallbackName}
+        dbAvailable={false}
+        challengeOpen={false}
+        costLimit={1}
+        maxAttempts={3}
+        statusLabel="Offline"
+      />
+    );
+  }
 }

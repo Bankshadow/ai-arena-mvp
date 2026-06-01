@@ -12,6 +12,7 @@ const NAV_LINKS = [
   { href: "#how-it-works", label: "How it works" },
   { href: "#first-challenge", label: "First challenge" },
   { href: "#leaderboard", label: "Leaderboard" },
+  { href: "/workflows", label: "Workflows" },
   { href: "#audience", label: "Who it's for" },
   { href: "#faq", label: "FAQ" },
 ];
@@ -373,18 +374,30 @@ export function LandingPage({ data }: LandingPageProps) {
             We are selecting the first 50 beta challengers.
           </p>
 
-          <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
-            <a
-              href={primaryCtaHref}
-              className="rounded-full bg-emerald-500 px-8 py-3.5 text-sm font-semibold text-black transition hover:bg-emerald-400"
-            >
-              {primaryCtaLabel}
-            </a>
+          <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
             <a
               href={`/challenge/${data.challengeSlug}`}
-              className="rounded-full border border-white/15 px-8 py-3.5 text-sm font-medium text-zinc-300 transition hover:border-white/30 hover:bg-white/[0.04]"
+              className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-6 py-3.5 text-sm font-medium text-cyan-300 transition hover:bg-cyan-500/20"
             >
-              View First Challenge
+              First Challenge
+            </a>
+            <a
+              href="/submit"
+              className="rounded-full bg-gradient-to-r from-cyan-500 to-violet-600 px-6 py-3.5 text-sm font-semibold text-black"
+            >
+              Submit Solution
+            </a>
+            <a
+              href="/leaderboard"
+              className="rounded-full border border-white/15 px-6 py-3.5 text-sm font-medium text-zinc-300 transition hover:border-white/30 hover:bg-white/[0.04]"
+            >
+              Leaderboard
+            </a>
+            <a
+              href="/workflows"
+              className="rounded-full border border-violet-500/30 bg-violet-500/10 px-6 py-3.5 text-sm font-medium text-violet-300"
+            >
+              Workflows
             </a>
           </div>
 
@@ -564,6 +577,27 @@ export function LandingPage({ data }: LandingPageProps) {
                   </div>
                 ))}
               </div>
+            </div>
+
+            <div className="mt-10 flex flex-wrap justify-center gap-3">
+              <Link
+                href={`/challenge/${data.challengeSlug}`}
+                className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-6 py-3 text-sm font-medium text-cyan-300 transition hover:bg-cyan-500/20"
+              >
+                View challenge details
+              </Link>
+              <Link
+                href="/submit"
+                className="rounded-full bg-gradient-to-r from-cyan-500 to-violet-600 px-6 py-3 text-sm font-semibold text-black"
+              >
+                Submit solution
+              </Link>
+              <Link
+                href="/leaderboard"
+                className="rounded-full border border-white/15 px-6 py-3 text-sm font-medium text-zinc-300 hover:bg-white/[0.04]"
+              >
+                Leaderboard
+              </Link>
             </div>
 
             <div className="mt-12">
@@ -909,11 +943,17 @@ export function LandingPage({ data }: LandingPageProps) {
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 sm:flex-row">
           <span className="font-mono text-xs tracking-widest text-zinc-500">AI ARENA © 2026</span>
           <div className="flex flex-wrap justify-center gap-6 text-xs text-zinc-500">
-            <a href="#first-challenge" className="hover:text-zinc-300">
-              First challenge
+            <a href={`/challenge/${data.challengeSlug}`} className="hover:text-zinc-300">
+              Challenge
+            </a>
+            <a href="/submit" className="hover:text-zinc-300">
+              Submit
             </a>
             <a href="/leaderboard" className="hover:text-zinc-300">
               Leaderboard
+            </a>
+            <a href="/workflows" className="hover:text-zinc-300">
+              Workflows
             </a>
             <a href="#waitlist" className="hover:text-zinc-300">
               Waitlist
