@@ -1,42 +1,19 @@
 import { LeaderboardView } from "@/components/leaderboard/leaderboard-view";
-import type { LeaderboardRow } from "@/components/LeaderboardTable";
-import { DEFAULT_CHALLENGE_SLUG } from "@/lib/constants";
-import { hasDatabaseUrl } from "@/lib/env";
-import { entryToRow, mockToRows } from "@/lib/leaderboard/merge-rows";
-import {
-  formatLeaderboardUpdatedAt,
-  getLeaderboardByChallengeSlug,
-} from "@/lib/queries/leaderboard";
+import { mapApprovedToLeaderboardRows } from "@/lib/leaderboard/map-rows";
+import { mockToRows } from "@/lib/leaderboard/merge-rows";
+import { fetchApprovedSubmissions, isSupabaseConfigured } from "@/lib/supabase/submissions";
 
 export default async function LeaderboardPage() {
-  let initialRows: LeaderboardRow[] = [];
-  let source: "database" | "mock" | "empty" = "mock";
-  let updatedLabel: string | undefined;
+  if (!isSupabaseConfigured()) {
+    return <LeaderboardView rows={mockToRows()} source="mock" />;
+  }
 
-  if (hasDatabaseUrl()) {
-    try {
-      const data = await getLeaderboardByChallengeSlug(DEFAULT_CHALLENGE_SLUG);
-      if (data && data.entries.length > 0) {
-        initialRows = data.entries.map((e) => entryToRow(e));
-        source = "database";
-        updatedLabel = formatLeaderboardUpdatedAt(data.updatedAt);
-      } else if (data) {
-        source = "empty";
-        initialRows = [];
-      }
-    } catch {
-      source = "mock";
-      initialRows = mockToRows();
-    }
-  } else {
-    initialRows = mockToRows();
+  const approved = await fetchApprovedSubmissions();
+  if (approved.length === 0) {
+    return <LeaderboardView rows={[]} source="empty" />;
   }
 
   return (
-    <LeaderboardView
-      initialRows={initialRows}
-      source={source}
-      updatedLabel={updatedLabel}
-    />
+    <LeaderboardView rows={mapApprovedToLeaderboardRows(approved)} source="supabase" />
   );
 }

@@ -12,6 +12,7 @@ const LINKS = [
   { href: "/submit", label: "Submit" },
   { href: "/leaderboard", label: "Leaderboard" },
   { href: "/workflows", label: "Workflows" },
+  { href: "/admin", label: "Admin" },
 ];
 
 export function Nav() {

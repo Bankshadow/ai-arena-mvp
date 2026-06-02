@@ -1,51 +1,28 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Trophy } from "lucide-react";
 
 import { LeaderboardTable, type LeaderboardRow } from "@/components/LeaderboardTable";
 import { Nav } from "@/components/Nav";
-import {
-  getBestSubmissionPerEmail,
-  loadSubmissions,
-} from "@/lib/client/submissions";
-import { mergeLeaderboardRows } from "@/lib/leaderboard/merge-rows";
 
 export type LeaderboardViewProps = {
-  initialRows: LeaderboardRow[];
-  source: "database" | "mock" | "empty";
-  updatedLabel?: string;
+  rows: LeaderboardRow[];
+  source: "supabase" | "mock" | "empty";
 };
 
-export function LeaderboardView({
-  initialRows,
-  source,
-  updatedLabel,
-}: LeaderboardViewProps) {
-  const [rows, setRows] = useState<LeaderboardRow[]>(initialRows);
-
-  useEffect(() => {
-    const local = getBestSubmissionPerEmail(loadSubmissions()).map((s) => ({
-      rank: 0,
-      player: s.name,
-      qualityScore: s.qualityScore,
-      cost: s.estimatedCost,
-      costScore: s.costScore,
-      finalScore: s.finalScore,
-      modelUsed: s.modelUsed,
-      highlight: true,
-    }));
-
-    setRows(mergeLeaderboardRows(initialRows, local));
-  }, [initialRows]);
-
+export function LeaderboardView({ rows, source }: LeaderboardViewProps) {
   const subtitle =
-    source === "database"
-      ? `Live rankings from scored submissions${updatedLabel ? ` · ${updatedLabel}` : ""}`
+    source === "supabase"
+      ? "Approved submissions · Final Score = Quality × 0.8 + Cost Score × 0.2"
       : source === "mock"
-        ? "Demo leaders + your browser submissions · connect DATABASE_URL for live data"
-        : "No scored entries yet · submit to appear after review";
+        ? "Demo data — configure Supabase for live rankings"
+        : "Final Score = Quality × 0.8 + Cost Score × 0.2";
+
+  const emptyMessage =
+    source === "empty" || (source === "supabase" && rows.length === 0)
+      ? "No reviewed submissions yet."
+      : undefined;
 
   return (
     <div className="relative min-h-screen bg-[#030303] text-zinc-100">
@@ -63,9 +40,7 @@ export function LeaderboardView({
               <Trophy className="size-8 text-amber-400" />
               Leaderboard
             </h1>
-            <p className="mt-2 text-zinc-400">
-              Final Score = Quality × 0.8 + Cost Score × 0.2 · {subtitle}
-            </p>
+            <p className="mt-2 text-zinc-400">{subtitle}</p>
           </div>
           <Link
             href="/submit"
@@ -76,7 +51,7 @@ export function LeaderboardView({
         </div>
 
         <div className="mt-10">
-          <LeaderboardTable rows={rows} />
+          <LeaderboardTable rows={rows} emptyMessage={emptyMessage} />
         </div>
       </main>
     </div>

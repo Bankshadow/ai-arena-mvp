@@ -1,17 +1,13 @@
 "use client";
 
-import { FormEvent, useState, useTransition } from "react";
+import { FormEvent, useState } from "react";
 import Link from "next/link";
-import { AlertCircle, CheckCircle2, Clock, Send } from "lucide-react";
+import { AlertCircle, CheckCircle2, Loader2, Send } from "lucide-react";
 
-import {
-  submitChallengeEntry,
-  type SubmitChallengeSuccess,
-} from "@/app/actions/submit-challenge";
 import { Nav } from "@/components/Nav";
 import { DEFAULT_CHALLENGE_SLUG } from "@/lib/constants";
-import { saveSubmission } from "@/lib/client/submissions";
-import { validateSubmissionForm } from "@/lib/validations/submission";
+import { createBrowserSupabase, isSupabaseConfigured } from "@/lib/supabase";
+import type { SubmissionInsert } from "@/lib/supabase/types";
 
 const ROLES = ["AI Builder", "Prompt Engineer", "Developer", "Enterprise", "Curious"];
 
@@ -39,7 +35,7 @@ const EMPTY: FormState = {
 
 type FormErrors = Partial<Record<keyof FormState, string>>;
 
-function validateLocal(form: FormState, costLimit: number): FormErrors {
+function validate(form: FormState): FormErrors {
   const errors: FormErrors = {};
   if (!form.name.trim() || form.name.trim().length < 2) errors.name = "Name is required.";
   if (!form.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
@@ -53,8 +49,8 @@ function validateLocal(form: FormState, costLimit: number): FormErrors {
   const cost = parseFloat(form.estimatedCost);
   if (!form.estimatedCost.trim() || Number.isNaN(cost)) {
     errors.estimatedCost = "Enter a valid cost.";
-  } else if (cost < 0 || cost > costLimit) {
-    errors.estimatedCost = `Cost must be between $0 and $${costLimit.toFixed(2)}.`;
+  } else if (cost < 0) {
+    errors.estimatedCost = "Cost must be 0 or greater.";
   }
   if (!form.outputResult.trim() || form.outputResult.trim().length < 50) {
     errors.outputResult = "Output must be at least 50 characters.";
@@ -63,121 +59,64 @@ function validateLocal(form: FormState, costLimit: number): FormErrors {
 }
 
 export type MvpSubmitFormProps = {
-  challengeSlug?: string;
-  challengeName: string;
-  dbAvailable: boolean;
-  challengeOpen: boolean;
-  costLimit: number;
-  maxAttempts: number;
-  statusLabel: string;
+  challengeName?: string;
 };
 
 export function MvpSubmitForm({
-  challengeSlug = DEFAULT_CHALLENGE_SLUG,
-  challengeName,
-  dbAvailable,
-  challengeOpen,
-  costLimit,
-  maxAttempts,
-  statusLabel,
+  challengeName = "Executive Summary Battle #1",
 }: MvpSubmitFormProps) {
+  const supabaseReady = isSupabaseConfigured();
   const [form, setForm] = useState<FormState>(EMPTY);
   const [errors, setErrors] = useState<FormErrors>({});
-  const [serverError, setServerError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<
-    | { mode: "local" }
-    | { mode: "database"; result: SubmitChallengeSuccess }
-    | null
-  >(null);
-  const [isPending, startTransition] = useTransition();
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
 
-  const useDatabase =
-    dbAvailable && challengeOpen && !serverError?.includes("fallback");
-
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    setServerError(null);
+    setSubmitError(null);
 
-    if (dbAvailable && challengeOpen) {
-      const zodResult = validateSubmissionForm(
-        {
-          name: form.name,
-          email: form.email,
-          promptUsed: form.promptUsed,
-          modelUsed: form.modelUsed,
-          estimatedCost: form.estimatedCost,
-          output: form.outputResult,
-        },
-        challengeSlug,
-        costLimit
+    const validation = validate(form);
+    setErrors(validation);
+    if (Object.keys(validation).length > 0) return;
+
+    const supabase = createBrowserSupabase();
+    if (!supabase) {
+      setSubmitError(
+        "Supabase is not configured. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to .env.local."
       );
-      if (!zodResult.success) {
-        const fieldErrors = zodResult.fieldErrors ?? {};
-        setErrors({
-          name: fieldErrors.name,
-          email: fieldErrors.email,
-          promptUsed: fieldErrors.promptUsed,
-          modelUsed: fieldErrors.modelUsed,
-          estimatedCost: fieldErrors.estimatedCost,
-          outputResult: fieldErrors.output,
-        });
-        return;
-      }
-
-      startTransition(async () => {
-        const result = await submitChallengeEntry({
-          ...zodResult.data!,
-          role: form.role.trim(),
-          workflowNotes: form.workflowNotes.trim() || undefined,
-        });
-
-        if (result.success) {
-          saveSubmission({
-            name: form.name.trim(),
-            email: form.email.trim(),
-            role: form.role,
-            promptUsed: form.promptUsed.trim(),
-            modelUsed: form.modelUsed.trim(),
-            estimatedCost: parseFloat(form.estimatedCost),
-            outputResult: form.outputResult.trim(),
-            workflowNotes: form.workflowNotes.trim(),
-          });
-          setSuccess({ mode: "database", result });
-          return;
-        }
-
-        if (result.error.includes("database is not configured")) {
-          submitLocally();
-          return;
-        }
-
-        setServerError(result.error);
-      });
       return;
     }
 
-    const validation = validateLocal(form, costLimit);
-    setErrors(validation);
-    if (Object.keys(validation).length > 0) return;
-    submitLocally();
-  }
+    setLoading(true);
 
-  function submitLocally() {
-    saveSubmission({
+    const payload: SubmissionInsert = {
+      challenge_id: DEFAULT_CHALLENGE_SLUG,
       name: form.name.trim(),
       email: form.email.trim(),
       role: form.role,
-      promptUsed: form.promptUsed.trim(),
-      modelUsed: form.modelUsed.trim(),
-      estimatedCost: parseFloat(form.estimatedCost),
-      outputResult: form.outputResult.trim(),
-      workflowNotes: form.workflowNotes.trim(),
-    });
-    setSuccess({ mode: "local" });
+      prompt_used: form.promptUsed.trim(),
+      model_used: form.modelUsed.trim(),
+      estimated_cost: parseFloat(form.estimatedCost),
+      output_result: form.outputResult.trim(),
+      workflow_notes: form.workflowNotes.trim() || null,
+    };
+
+    const { error } = await supabase.from("submissions").insert(payload);
+
+    setLoading(false);
+
+    if (error) {
+      setSubmitError(error.message);
+      return;
+    }
+
+    setSuccess(true);
+    setForm({ ...EMPTY, role: ROLES[0] });
   }
 
   const inputClass =
-    "w-full rounded-xl border border-white/15 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20";
+    "w-full rounded-xl border border-white/15 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 disabled:opacity-50";
 
   return (
     <div className="relative min-h-screen bg-[#030303] text-zinc-100">
@@ -189,37 +128,52 @@ export function MvpSubmitForm({
         <p className="font-mono text-xs uppercase tracking-[0.2em] text-cyan-400/80">
           Submit solution
         </p>
-        <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">
-          {challengeName}
-        </h1>
+        <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">{challengeName}</h1>
         <p className="mt-3 text-zinc-400">
-          {dbAvailable && challengeOpen
-            ? "Submissions are saved to the database. When OpenAI is configured, the AI Judge scores automatically."
-            : dbAvailable
-              ? `Challenge status: ${statusLabel}. Submissions save locally in your browser until the challenge opens.`
-              : "No database configured — submissions are stored in your browser (localStorage)."}
+          {supabaseReady
+            ? "Your submission is saved to Supabase and reviewed in the admin panel before appearing on the leaderboard."
+            : "Configure Supabase env vars to enable real submissions."}
         </p>
 
-        {dbAvailable && (
-          <p className="mt-2 text-xs text-zinc-500">
-            Up to {maxAttempts} attempts per email · Cost cap ${costLimit.toFixed(2)}
-          </p>
+        {!supabaseReady && (
+          <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+            Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY.
+          </div>
         )}
 
-        {serverError && (
-          <div className="mt-6 flex gap-2 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+        {submitError && (
+          <div className="mt-4 flex gap-2 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
             <AlertCircle className="mt-0.5 size-4 shrink-0" />
-            {serverError}
+            {submitError}
           </div>
         )}
 
         {success ? (
-          <SuccessPanel success={success} onReset={() => {
-            setForm(EMPTY);
-            setSuccess(null);
-            setErrors({});
-            setServerError(null);
-          }} />
+          <div className="glass-card neon-glow mt-10 rounded-2xl p-8">
+            <CheckCircle2 className="size-10 text-cyan-400" />
+            <p className="mt-4 text-lg font-semibold text-white">Submission received</p>
+            <p className="mt-2 text-zinc-400">
+              Submission received. Your result will appear on the leaderboard after review.
+            </p>
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+              <Link
+                href="/leaderboard"
+                className="inline-flex justify-center rounded-full bg-gradient-to-r from-cyan-500 to-violet-600 px-6 py-2.5 text-sm font-semibold text-black"
+              >
+                View Leaderboard
+              </Link>
+              <button
+                type="button"
+                onClick={() => {
+                  setSuccess(false);
+                  setErrors({});
+                }}
+                className="rounded-full border border-white/15 px-6 py-2.5 text-sm text-zinc-300 hover:bg-white/5"
+              >
+                Submit another
+              </button>
+            </div>
+          </div>
         ) : (
           <form
             onSubmit={handleSubmit}
@@ -232,7 +186,7 @@ export function MvpSubmitForm({
                   value={form.name}
                   onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                   placeholder="Your name"
-                  disabled={isPending}
+                  disabled={loading}
                 />
               </Field>
               <Field label="Email" error={errors.email}>
@@ -242,7 +196,7 @@ export function MvpSubmitForm({
                   value={form.email}
                   onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
                   placeholder="you@company.com"
-                  disabled={isPending}
+                  disabled={loading}
                 />
               </Field>
             </div>
@@ -251,7 +205,7 @@ export function MvpSubmitForm({
                 className={inputClass}
                 value={form.role}
                 onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))}
-                disabled={isPending}
+                disabled={loading}
               >
                 {ROLES.map((r) => (
                   <option key={r} value={r} className="bg-zinc-900">
@@ -266,7 +220,7 @@ export function MvpSubmitForm({
                 value={form.promptUsed}
                 onChange={(e) => setForm((f) => ({ ...f, promptUsed: e.target.value }))}
                 placeholder="Your full prompt or workflow instructions..."
-                disabled={isPending}
+                disabled={loading}
               />
             </Field>
             <div className="grid gap-5 sm:grid-cols-2">
@@ -276,7 +230,7 @@ export function MvpSubmitForm({
                   value={form.modelUsed}
                   onChange={(e) => setForm((f) => ({ ...f, modelUsed: e.target.value }))}
                   placeholder="gpt-4o-mini"
-                  disabled={isPending}
+                  disabled={loading}
                 />
               </Field>
               <Field label="Estimated cost (USD)" error={errors.estimatedCost}>
@@ -286,7 +240,7 @@ export function MvpSubmitForm({
                   value={form.estimatedCost}
                   onChange={(e) => setForm((f) => ({ ...f, estimatedCost: e.target.value }))}
                   placeholder="0.08"
-                  disabled={isPending}
+                  disabled={loading}
                 />
               </Field>
             </div>
@@ -296,7 +250,7 @@ export function MvpSubmitForm({
                 value={form.outputResult}
                 onChange={(e) => setForm((f) => ({ ...f, outputResult: e.target.value }))}
                 placeholder="Executive Summary, Key Risks, Recommendations..."
-                disabled={isPending}
+                disabled={loading}
               />
             </Field>
             <Field label="Workflow notes (optional)" error={errors.workflowNotes}>
@@ -305,97 +259,29 @@ export function MvpSubmitForm({
                 value={form.workflowNotes}
                 onChange={(e) => setForm((f) => ({ ...f, workflowNotes: e.target.value }))}
                 placeholder="Briefly describe your pipeline steps..."
-                disabled={isPending}
+                disabled={loading}
               />
             </Field>
             <button
               type="submit"
-              disabled={isPending}
-              className="flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-cyan-500 to-violet-600 py-3 text-sm font-semibold text-black transition hover:opacity-90 disabled:opacity-60 sm:w-auto sm:px-8"
+              disabled={loading || !supabaseReady}
+              className="flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-cyan-500 to-violet-600 py-3 text-sm font-semibold text-black transition hover:opacity-90 disabled:opacity-50 sm:w-auto sm:px-8"
             >
-              {isPending ? (
+              {loading ? (
                 <>
-                  <Clock className="size-4 animate-pulse" />
+                  <Loader2 className="size-4 animate-spin" />
                   Submitting…
                 </>
               ) : (
                 <>
                   <Send className="size-4" />
-                  {useDatabase ? "Submit to challenge" : "Submit solution"}
+                  Submit solution
                 </>
               )}
             </button>
           </form>
         )}
       </main>
-    </div>
-  );
-}
-
-function SuccessPanel({
-  success,
-  onReset,
-}: {
-  success: { mode: "local" } | { mode: "database"; result: SubmitChallengeSuccess };
-  onReset: () => void;
-}) {
-  const isDb = success.mode === "database";
-  const result = isDb ? success.result : null;
-
-  return (
-    <div className="glass-card neon-glow mt-10 rounded-2xl p-8">
-      <CheckCircle2 className="size-10 text-cyan-400" />
-      <p className="mt-4 text-lg font-semibold text-white">Submission received</p>
-
-      {isDb && result?.scoringStatus === "scored" ? (
-        <p className="mt-2 text-zinc-400">
-          Scored by AI Judge — attempt {result.attemptNumber}/{result.maxAttempts}. Your
-          leaderboard entry is live.
-        </p>
-      ) : isDb && result?.scoringStatus === "pending" ? (
-        <p className="mt-2 text-zinc-400">
-          Saved to the database. Scoring is pending (set OPENAI_API_KEY or run{" "}
-          <code className="text-cyan-400">npm run judge:pending</code>). Your result will
-          appear on the leaderboard after review.
-        </p>
-      ) : (
-        <p className="mt-2 text-zinc-400">
-          Submission received. Your result will appear on the leaderboard after review.
-        </p>
-      )}
-
-      {isDb && result?.finalScore != null && (
-        <dl className="mt-6 grid grid-cols-3 gap-3 text-center text-sm">
-          <div className="rounded-lg border border-white/10 bg-black/20 py-3">
-            <dt className="text-xs text-zinc-500">Quality</dt>
-            <dd className="font-mono text-lg text-violet-300">{result.qualityScore}</dd>
-          </div>
-          <div className="rounded-lg border border-white/10 bg-black/20 py-3">
-            <dt className="text-xs text-zinc-500">Cost score</dt>
-            <dd className="font-mono text-lg text-cyan-400">{result.costEfficiencyScore}</dd>
-          </div>
-          <div className="rounded-lg border border-white/10 bg-black/20 py-3">
-            <dt className="text-xs text-zinc-500">Final</dt>
-            <dd className="font-mono text-lg font-semibold text-white">{result.finalScore}</dd>
-          </div>
-        </dl>
-      )}
-
-      <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-        <Link
-          href="/leaderboard"
-          className="inline-flex justify-center rounded-full bg-gradient-to-r from-cyan-500 to-violet-600 px-6 py-2.5 text-sm font-semibold text-black"
-        >
-          View Leaderboard
-        </Link>
-        <button
-          type="button"
-          onClick={onReset}
-          className="rounded-full border border-white/15 px-6 py-2.5 text-sm text-zinc-300 hover:bg-white/5"
-        >
-          Submit another
-        </button>
-      </div>
     </div>
   );
 }

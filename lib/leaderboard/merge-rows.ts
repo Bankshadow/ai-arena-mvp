@@ -24,6 +24,8 @@ export function mockToRows(): LeaderboardRow[] {
     costScore: m.costScore,
     finalScore: m.finalScore,
     modelUsed: m.modelUsed,
+    submittedAt: new Date().toISOString(),
+    highlight: i < 3,
   }));
 }
 

@@ -2,48 +2,98 @@
 
 Compete to build the most efficient AI workflows.
 
-## Database (Challenge #1 MVP)
+**MVP loop:** Challenge → Submit → Admin Review → Score → Leaderboard
 
-Postgres + Drizzle ORM. See [docs/DATABASE.md](docs/DATABASE.md).
+## Supabase setup
+
+1. Create a project at [supabase.com](https://supabase.com).
+2. In **SQL Editor**, run the full script from [`supabase/schema.sql`](supabase/schema.sql).
+3. In **Project Settings → API**, copy:
+   - Project URL → `NEXT_PUBLIC_SUPABASE_URL`
+   - `anon` `public` key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+
+### Environment variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `NEXT_PUBLIC_SUPABASE_URL` | Yes | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Supabase anon (public) key |
 
 ```bash
-cp .env.example .env.local   # set DATABASE_URL
-npm run db:push
-npm run db:seed
-npm run challenge:open         # when ready to accept submissions
+cp .env.example .env.local
+# Edit .env.local with your Supabase values
 ```
 
-## Getting Started
-
-First, run the development server:
+## Run locally
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Test the full flow
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. **Submit** — [http://localhost:3000/submit](http://localhost:3000/submit)  
+   Fill the form and submit. Row appears in Supabase `submissions` with `status = pending`.
 
-## Learn More
+2. **Admin** — [http://localhost:3000/admin](http://localhost:3000/admin)  
+   Open a pending submission, set **Quality score** (0–100), optional notes, click **Approve** or **Reject**.  
+   Approve auto-fills `cost_score` and `final_score` using the MVP formulas.
 
-To learn more about Next.js, take a look at the following resources:
+3. **Leaderboard** — [http://localhost:3000/leaderboard](http://localhost:3000/leaderboard)  
+   Only `approved` submissions appear, sorted by `final_score` (ties: lower cost wins). Top 3 are highlighted.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+4. **Supabase Table Editor** — confirm rows and status changes.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Scoring (MVP)
 
-## Deploy on Vercel
+**Cost score** from `estimated_cost` (USD):
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+| Cost | Cost score |
+|------|------------|
+| ≤ $0.10 | 100 |
+| ≤ $0.25 | 90 |
+| ≤ $0.50 | 80 |
+| ≤ $1.00 | 70 |
+| > $1.00 | 0 |
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+**Final score:** `quality_score × 0.8 + cost_score × 0.2`
+
+## Deploy to Vercel
+
+1. Push the repo and import the project in Vercel.
+2. Add environment variables (Production + Preview):
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+3. Deploy. Run `supabase/schema.sql` on your production Supabase project if you have not already.
+4. Smoke-test submit → admin approve → leaderboard on the production URL.
+
+> **Security:** The admin panel has no authentication in MVP mode. RLS policies in `schema.sql` are permissive for development. Tighten policies and protect `/admin` before a public launch.
+
+## Routes
+
+| Route | Purpose |
+|-------|---------|
+| `/` | Landing |
+| `/challenge/executive-summary-battle` | Challenge #1 details |
+| `/submit` | Submit solution (Supabase) |
+| `/leaderboard` | Approved rankings |
+| `/workflows` | Workflow library (demo / legacy) |
+| `/admin` | Manual review (unprotected MVP) |
+
+## Scripts
+
+```bash
+npm run dev          # Development server
+npm run build        # Production build
+npm run lint         # ESLint
+```
+
+Legacy Postgres/Drizzle scripts (`db:push`, `db:seed`, etc.) remain for optional use but are not required for the Supabase MVP path.
+
+## Learn more
+
+- [Next.js Documentation](https://nextjs.org/docs)
+- [Supabase Documentation](https://supabase.com/docs)
