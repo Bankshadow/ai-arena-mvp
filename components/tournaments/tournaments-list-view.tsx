@@ -2,39 +2,53 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { History, Radio } from "lucide-react";
+import { History, Play, Radio } from "lucide-react";
 
 import { Nav } from "@/components/Nav";
+import { ScoreHelp } from "@/components/scoring/score-help";
 import { getCompetitor } from "@/lib/tournament/agents";
-import type { CompetitorAgentId } from "@/lib/tournament/types";
 import {
   listLocalTournamentRounds,
   mergeTournamentLists,
 } from "@/lib/tournament/local-storage";
-import type { TournamentListItem } from "@/lib/tournament/saved-tournament";
+import {
+  mergeWithMockTournamentRounds,
+  type TournamentHistoryRow,
+} from "@/lib/tournament/mock-saved-rounds";
+import type { CompetitorAgentId } from "@/lib/tournament/types";
 
 export function TournamentsListView() {
-  const [rounds, setRounds] = useState<TournamentListItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [source, setSource] = useState<"supabase" | "local" | "mixed">("local");
+  const [rounds, setRounds] = useState<TournamentHistoryRow[]>(() =>
+    mergeWithMockTournamentRounds([]),
+  );
+  const [source, setSource] = useState<"demo" | "supabase" | "local" | "mixed">("demo");
 
   useEffect(() => {
     async function load() {
       try {
         const res = await fetch("/api/tournament/rounds");
         const data = await res.json();
-        const remote: TournamentListItem[] = data.rounds ?? [];
-        const merged = mergeTournamentLists(remote, listLocalTournamentRounds());
-        setRounds(merged);
-        setSource(
-          remote.length > 0 && listLocalTournamentRounds().length > 0
-            ? "mixed"
-            : remote.length > 0
-              ? "supabase"
-              : "local",
+        const remote = data.rounds ?? [];
+        const merged = mergeWithMockTournamentRounds(
+          mergeTournamentLists(remote, listLocalTournamentRounds()),
         );
-      } finally {
-        setLoading(false);
+        setRounds(merged);
+        const hasLive = remote.length > 0 || listLocalTournamentRounds().length > 0;
+        setSource(
+          hasLive && remote.length > 0
+            ? listLocalTournamentRounds().length > 0
+              ? "mixed"
+              : "supabase"
+            : hasLive
+              ? "local"
+              : "demo",
+        );
+      } catch {
+        setRounds(
+          mergeWithMockTournamentRounds(
+            mergeTournamentLists([], listLocalTournamentRounds()),
+          ),
+        );
       }
     }
     load();
@@ -46,7 +60,7 @@ export function TournamentsListView() {
       <div className="grid-bg pointer-events-none fixed inset-0 opacity-30" />
       <Nav />
 
-      <main className="relative mx-auto max-w-5xl px-4 pb-20 pt-10 sm:px-6">
+      <main className="relative mx-auto max-w-6xl px-4 pb-20 pt-10 sm:px-6">
         <p className="font-mono text-xs uppercase tracking-[0.2em] text-violet-400/80">
           Tournament · Round history
         </p>
@@ -55,9 +69,14 @@ export function TournamentsListView() {
           Saved rounds
         </h1>
         <p className="mt-3 max-w-2xl text-zinc-400">
-          Replay completed tournament rounds. Auto-saved to Supabase when configured, otherwise in
-          your browser.
+          Autonomous tournament rounds — challenge selection, agent runs, judging, leaderboard, and
+          marketplace seeding. Replay any completed round.
         </p>
+
+        <div className="mt-4 flex flex-wrap gap-4">
+          <ScoreHelp system="agent_simulation" />
+          <ScoreHelp system="marketplace" />
+        </div>
 
         <div className="mt-6 flex flex-wrap gap-3">
           <Link
@@ -67,48 +86,47 @@ export function TournamentsListView() {
             <Radio className="size-4" />
             Open tournament engine
           </Link>
-          {!loading && (
-            <span className="self-center text-xs text-zinc-500">
-              Source:{" "}
-              {source === "supabase"
-                ? "Supabase"
+          <span className="self-center text-xs text-zinc-500">
+            Source:{" "}
+            {source === "demo"
+              ? "Demo rounds + your saves"
+              : source === "supabase"
+                ? "Supabase + demo"
                 : source === "mixed"
-                  ? "Supabase + local"
-                  : "Browser only"}
-            </span>
-          )}
+                  ? "Supabase + local + demo"
+                  : "Local + demo"}
+          </span>
         </div>
 
         <div className="mt-8 glass-card overflow-hidden rounded-2xl">
-          {loading ? (
-            <p className="p-8 text-center text-sm text-zinc-500">Loading rounds…</p>
-          ) : rounds.length === 0 ? (
-            <div className="flex flex-col items-center p-12 text-center text-zinc-500">
-              <History className="size-10 text-zinc-700" />
-              <p className="mt-3 text-sm">No tournament rounds saved yet.</p>
-              <Link href="/tournament" className="mt-4 text-sm text-cyan-400 hover:underline">
-                Run your first round →
-              </Link>
-            </div>
-          ) : (
-            <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[800px] text-sm">
               <thead className="bg-white/5 text-left text-xs uppercase tracking-wider text-zinc-500">
                 <tr>
+                  <th className="px-4 py-3">Round ID</th>
                   <th className="px-4 py-3">When</th>
-                  <th className="px-4 py-3">Round</th>
                   <th className="px-4 py-3">Challenge</th>
                   <th className="px-4 py-3">Winner</th>
-                  <th className="px-4 py-3">Mode</th>
                   <th className="px-4 py-3 text-right">Score</th>
+                  <th className="px-4 py-3 text-right">Cost</th>
+                  <th className="px-4 py-3 text-right">MP candidates</th>
+                  <th className="px-4 py-3" />
                 </tr>
               </thead>
               <tbody>
                 {rounds.map((r) => (
                   <tr key={r.id} className="border-t border-white/5 hover:bg-white/[0.02]">
+                    <td className="px-4 py-3 font-mono text-xs text-violet-300">
+                      {r.roundLabel}
+                      {r.isDemo && (
+                        <span className="ml-1 rounded bg-white/10 px-1 text-[10px] text-zinc-500">
+                          demo
+                        </span>
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-xs text-zinc-500">
                       {new Date(r.savedAt).toLocaleString()}
                     </td>
-                    <td className="px-4 py-3 font-mono text-violet-300">#{r.round}</td>
                     <td className="px-4 py-3">
                       <Link
                         href={`/tournaments/${r.id}`}
@@ -120,19 +138,32 @@ export function TournamentsListView() {
                     <td className="px-4 py-3 text-zinc-300">
                       {r.winnerAgentId
                         ? (r.winnerAgentName ??
-                          getCompetitor(r.winnerAgentId as CompetitorAgentId).name ??
+                          getCompetitor(r.winnerAgentId as CompetitorAgentId)?.name ??
                           r.winnerAgentId)
                         : "—"}
                     </td>
-                    <td className="px-4 py-3 capitalize text-zinc-400">{r.mode}</td>
                     <td className="px-4 py-3 text-right font-mono text-emerald-300">
                       {r.winnerScore ?? "—"}
+                    </td>
+                    <td className="px-4 py-3 text-right font-mono text-cyan-300">
+                      {r.costUsd > 0 ? `$${r.costUsd.toFixed(3)}` : "—"}
+                    </td>
+                    <td className="px-4 py-3 text-right font-mono text-amber-300">
+                      {r.marketplaceCandidates || "—"}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <Link
+                        href={`/tournaments/${r.id}`}
+                        className="inline-flex items-center gap-1 text-xs text-cyan-400 hover:underline"
+                      >
+                        <Play className="size-3" /> Replay
+                      </Link>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          )}
+          </div>
         </div>
       </main>
     </div>

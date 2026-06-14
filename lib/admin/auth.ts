@@ -7,10 +7,7 @@ const ADMIN_PATHS = ["/admin"];
 const ADMIN_API_PREFIX = "/api/admin";
 
 export function isAdminRoute(pathname: string): boolean {
-  return (
-    ADMIN_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`)) ||
-    pathname.startsWith(ADMIN_API_PREFIX)
-  );
+  return pathname.startsWith(ADMIN_API_PREFIX);
 }
 
 function adminCredentialsConfigured(): boolean {

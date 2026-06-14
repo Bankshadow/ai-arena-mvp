@@ -10,6 +10,10 @@ import { LiveLeaderboard } from "@/components/tournament/live-leaderboard";
 import { SelectedChallengeCard } from "@/components/tournament/selected-challenge-card";
 import { Nav } from "@/components/Nav";
 import { getLocalTournamentRound } from "@/lib/tournament/local-storage";
+import {
+  getSampleTournamentRecord,
+  SAMPLE_TOURNAMENT_ROUND_ID,
+} from "@/lib/tournament/sample-round";
 import type { SavedTournamentRecord } from "@/lib/tournament/saved-tournament";
 
 type Props = { roundId: string };
@@ -21,6 +25,14 @@ export function TournamentDetailView({ roundId }: Props) {
 
   useEffect(() => {
     async function load() {
+      if (
+        roundId === SAMPLE_TOURNAMENT_ROUND_ID ||
+        roundId.startsWith("mock-tournament")
+      ) {
+        setRecord({ ...getSampleTournamentRecord(), id: roundId });
+        return;
+      }
+
       try {
         const res = await fetch(`/api/tournament/rounds/${roundId}`);
         if (res.ok) {

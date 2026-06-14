@@ -29,6 +29,8 @@ import {
   type LoopStep,
   type TournamentMode,
 } from "@/lib/tournament/engine";
+import { createSampleTournamentState } from "@/lib/tournament/sample-round";
+import { ScoreHelp } from "@/components/scoring/score-help";
 import { DEFAULT_RUNTIME_MODE, type TournamentRuntimeMode } from "@/lib/tournament/routing/types";
 import {
   readTournamentAdminSettings,
@@ -62,7 +64,8 @@ type EngineStatus = {
 
 export function TournamentView() {
   const { mergeKb } = useMemory();
-  const [state, setState] = useState<TournamentState>(() => createInitialTournamentState());
+  const [sampleMode, setSampleMode] = useState(true);
+  const [state, setState] = useState<TournamentState>(() => createSampleTournamentState());
   const [busy, setBusy] = useState(false);
   const [countdownSec, setCountdownSec] = useState<number | null>(null);
   const [persistMessage, setPersistMessage] = useState<string | null>(null);
@@ -179,6 +182,7 @@ export function TournamentView() {
 
   const runStep = useCallback(
     async (step: LoopStep) => {
+      setSampleMode(false);
       setBusy(true);
       try {
         const ok = await runStepViaApi(step);
@@ -278,6 +282,44 @@ export function TournamentView() {
 
         <TournamentJoinEvents />
 
+        {sampleMode && (
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-cyan-500/25 bg-cyan-500/10 px-5 py-4">
+            <div>
+              <p className="font-mono text-xs uppercase tracking-wider text-cyan-300">
+                Sample round · Replay mode
+              </p>
+              <p className="mt-1 text-sm text-zinc-300">
+                Showing a completed demo round. Use manual controls below to start a live loop, or
+                clear to reset the engine.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Link
+                href={`/tournaments/sample-round-executive-7`}
+                className="rounded-lg border border-white/10 px-3 py-2 text-xs text-zinc-300 hover:bg-white/5"
+              >
+                Full replay →
+              </Link>
+              <button
+                type="button"
+                onClick={() => {
+                  setSampleMode(false);
+                  setState(createInitialTournamentState());
+                  setPersistMessage(null);
+                }}
+                className="rounded-lg border border-violet-500/40 bg-violet-500/10 px-3 py-2 text-xs text-violet-200"
+              >
+                Clear & start fresh
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div className="mt-6 flex flex-wrap gap-4">
+          <ScoreHelp system="agent_simulation" />
+          <ScoreHelp system="marketplace" />
+        </div>
+
         <div className="mt-6 space-y-6">
           <TournamentStatusCard
             tournament={state.tournament}
@@ -358,24 +400,6 @@ export function TournamentView() {
             }}
           />
 
-          <ProviderStatusCards
-            providers={engineStatus.providers ?? []}
-            groqRateLimit={engineStatus.groqRateLimit}
-          />
-
-          <RoutingDashboard routing={state.routing} />
-
-          <ConstitutionTournamentPanel
-            constitution={state.constitution}
-            activeRuns={state.tournament.activeRuns}
-            evaluations={state.tournament.evaluations}
-            onPromoteMarketplace={() => {
-              setPersistMessage("Constitution marked as marketplace candidate (mock — local only)");
-            }}
-          />
-
-          <MemoryTournamentPanel memory={state.memory} />
-
           <div className="grid gap-6 lg:grid-cols-2">
             <ChallengeGeneratorPanel
               ideas={state.tournament.challengeIdeas}
@@ -390,18 +414,36 @@ export function TournamentView() {
             agentModels={state.routing?.agentModels}
           />
 
+          <RoutingDashboard routing={state.routing} />
+
+          <ProviderStatusCards
+            providers={engineStatus.providers ?? []}
+            groqRateLimit={engineStatus.groqRateLimit}
+          />
+
           <div className="grid gap-6 xl:grid-cols-2">
             <LiveLeaderboard entries={state.leaderboard} />
+            <MemoryTournamentPanel memory={state.memory} />
+          </div>
+
+          <MarketplaceSeedPanel state={state} />
+
+          <div className="grid gap-6 xl:grid-cols-2">
             <AgentPerformanceAnalytics
               evaluations={state.tournament.evaluations}
               leaderboard={state.leaderboard}
             />
+            <TournamentHistory events={state.history} />
           </div>
 
-          <div className="grid gap-6 xl:grid-cols-2">
-            <TournamentHistory events={state.history} />
-            <MarketplaceSeedPanel state={state} />
-          </div>
+          <ConstitutionTournamentPanel
+            constitution={state.constitution}
+            activeRuns={state.tournament.activeRuns}
+            evaluations={state.tournament.evaluations}
+            onPromoteMarketplace={() => {
+              setPersistMessage("Constitution marked as marketplace candidate (mock — local only)");
+            }}
+          />
         </div>
       </main>
     </div>

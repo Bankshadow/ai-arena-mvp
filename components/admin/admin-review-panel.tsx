@@ -15,6 +15,7 @@ import type { AgentPersonaId } from "@/lib/agents/types";
 import { AGENT_PERSONAS } from "@/lib/agents/personas";
 
 import { Nav } from "@/components/Nav";
+import { AdminMockDashboard } from "@/components/admin/admin-mock-dashboard";
 import { AdminTournamentSettings } from "@/components/admin/admin-tournament-settings";
 import { useTranslations } from "@/components/i18n/locale-provider";
 import { isSupabaseConfigured } from "@/lib/supabase";
@@ -54,8 +55,9 @@ export function AdminReviewPanel() {
 
   const load = useCallback(async () => {
     if (!adminReady) {
-      setError(a.serviceRoleMissing);
       setLoading(false);
+      setRows([]);
+      setError(null);
       return;
     }
 
@@ -196,19 +198,25 @@ export function AdminReviewPanel() {
         </div>
 
         {!adminReady && (
-          <p className="mt-4 text-sm text-red-400">{a.serviceRoleMissing}</p>
+          <p className="mt-4 text-sm text-zinc-400">
+            Live submission review requires Supabase service role. Demo queues below stay available
+            without backend configuration.
+          </p>
         )}
+
+        <AdminMockDashboard liveAvailable={adminReady} />
 
         <AdminTournamentSettings groqAvailable={groqAvailable} />
 
+        <AgentRunPanel />
+
+        {adminReady && (
+          <>
         {error && (
           <p className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm text-red-300">
             {error}
           </p>
         )}
-
-        {/* Real Agent Runner */}
-        <AgentRunPanel />
 
         <div className="mt-8 flex flex-wrap items-center gap-3">
           <div className="flex flex-wrap gap-2">
@@ -387,6 +395,8 @@ export function AdminReviewPanel() {
               );
             })}
           </ul>
+        )}
+          </>
         )}
       </main>
     </div>

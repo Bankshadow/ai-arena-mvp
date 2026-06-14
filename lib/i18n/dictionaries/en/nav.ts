@@ -21,6 +21,7 @@ export const nav = {
   tools: "Tools",
   components: "Components",
   stackBuilder: "Stack",
+  lab: "Lab",
   enterprise: "For Teams",
   account: "Account",
   admin: "Admin",

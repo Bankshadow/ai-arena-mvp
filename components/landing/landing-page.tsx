@@ -268,7 +268,7 @@ export function LandingPage({ data }: LandingPageProps) {
 
           <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
             <a
-              href={`/challenge/${data.challengeSlug}`}
+              href="/tournament"
               className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-6 py-3.5 text-sm font-medium text-cyan-300 transition hover:bg-cyan-500/20"
             >
               {l.hero.firstChallenge}
@@ -286,12 +286,31 @@ export function LandingPage({ data }: LandingPageProps) {
               {l.hero.leaderboard}
             </a>
             <a
-              href="/workflows"
+              href="/stack-builder"
               className="rounded-full border border-violet-500/30 bg-violet-500/10 px-6 py-3.5 text-sm font-medium text-violet-300"
             >
               {l.hero.workflows}
             </a>
           </div>
+
+          {"narrative" in l && l.narrative && (
+            <div className="mt-20 mx-auto max-w-5xl">
+              <SectionLabel accent="cyan">{l.narrative.label}</SectionLabel>
+              <h2 className="mt-4 text-2xl font-semibold sm:text-3xl">{l.narrative.title}</h2>
+              <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {l.narrative.items.map((item) => (
+                  <Link
+                    key={item.title}
+                    href={item.href}
+                    className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-5 text-left transition hover:border-cyan-500/30 hover:bg-cyan-500/5"
+                  >
+                    <h3 className="font-medium text-white">{item.title}</h3>
+                    <p className="mt-2 text-sm leading-relaxed text-zinc-400">{item.body}</p>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="mt-16 flex flex-wrap items-center justify-center gap-3 font-mono text-xs text-zinc-500">
             {l.hero.loop.map((step, i) => (

@@ -6,6 +6,7 @@ import { Download, GitBranch, Scale, Target, Trophy, Users } from "lucide-react"
 
 import { useTranslations } from "@/components/i18n/locale-provider";
 import { Nav } from "@/components/Nav";
+import { ScoreHelp } from "@/components/scoring/score-help";
 import { StatCard } from "@/components/StatCard";
 import { translateChallengeStatus } from "@/lib/i18n/helpers";
 import type { ChallengePageData } from "@/lib/queries/challenge-page";
@@ -65,6 +66,10 @@ export function ChallengeDetail({ data }: ChallengeDetailProps) {
           <StatCard label={c.attempts} value={String(view.attempts)} />
           <StatCard label={c.scoring} value={c.scoringFormat(qualityPct, costPct)} />
           <StatCard label={c.deadline} value={view.deadlineLabel} />
+        </div>
+
+        <div className="mt-4">
+          <ScoreHelp system="challenge" />
         </div>
 
         {data.dbAvailable && (

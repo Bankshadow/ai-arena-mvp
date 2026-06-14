@@ -2,36 +2,39 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { History, Swords } from "lucide-react";
+import { History, Play, Swords } from "lucide-react";
 
 import { Nav } from "@/components/Nav";
+import { ScoreHelp } from "@/components/scoring/score-help";
 import { getAgentById } from "@/lib/agents/personas";
 import type { AgentPersonaId } from "@/lib/agents/types";
+import { mergeWithMockBattles, type BattleHistoryRow } from "@/lib/battle/mock-history";
 import { listLocalBattles, mergeBattleLists } from "@/lib/battle/local-storage";
-import type { BattleListItemWithId } from "@/lib/battle/local-storage-types";
 
 export function BattlesListView() {
-  const [battles, setBattles] = useState<BattleListItemWithId[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [source, setSource] = useState<"supabase" | "local" | "mixed">("local");
+  const [battles, setBattles] = useState<BattleHistoryRow[]>(() => mergeWithMockBattles([]));
+  const [source, setSource] = useState<"demo" | "supabase" | "local" | "mixed">("demo");
 
   useEffect(() => {
     async function load() {
       try {
         const res = await fetch("/api/battles");
         const data = await res.json();
-        const remote: BattleListItemWithId[] = data.battles ?? [];
-        const merged = mergeBattleLists(remote, listLocalBattles());
+        const remote = data.battles ?? [];
+        const merged = mergeWithMockBattles(mergeBattleLists(remote, listLocalBattles()));
         setBattles(merged);
+        const hasLive = remote.length > 0 || listLocalBattles().length > 0;
         setSource(
-          remote.length > 0 && listLocalBattles().length > 0
-            ? "mixed"
-            : remote.length > 0
-              ? "supabase"
-              : "local",
+          hasLive && remote.length > 0
+            ? listLocalBattles().length > 0
+              ? "mixed"
+              : "supabase"
+            : hasLive
+              ? "local"
+              : "demo",
         );
-      } finally {
-        setLoading(false);
+      } catch {
+        setBattles(mergeWithMockBattles(mergeBattleLists([], listLocalBattles())));
       }
     }
     load();
@@ -43,18 +46,22 @@ export function BattlesListView() {
       <div className="grid-bg pointer-events-none fixed inset-0 opacity-30" />
       <Nav />
 
-      <main className="relative mx-auto max-w-5xl px-4 pb-20 pt-10 sm:px-6">
+      <main className="relative mx-auto max-w-6xl px-4 pb-20 pt-10 sm:px-6">
         <p className="font-mono text-xs uppercase tracking-[0.2em] text-violet-400/80">
-          MVP9 · Battle history
+          Battle history
         </p>
         <h1 className="mt-2 flex items-center gap-3 text-3xl font-semibold sm:text-4xl">
           <History className="size-8 text-violet-400" />
           Past battles
         </h1>
         <p className="mt-3 max-w-2xl text-zinc-400">
-          Replay saved 5-agent token battles. Stored in Supabase when configured, otherwise in your
-          browser.
+          AI agents battle first. Replay token fights, compare variants, and study winning
+          workflows before they hit the marketplace.
         </p>
+
+        <div className="mt-4">
+          <ScoreHelp system="agent_simulation" />
+        </div>
 
         <div className="mt-6 flex flex-wrap gap-3">
           <Link
@@ -64,33 +71,32 @@ export function BattlesListView() {
             <Swords className="size-4" />
             New battle
           </Link>
-          {!loading && (
-            <span className="self-center text-xs text-zinc-500">
-              Source: {source === "supabase" ? "Supabase" : source === "mixed" ? "Supabase + local" : "Browser only"}
-            </span>
-          )}
+          <span className="self-center text-xs text-zinc-500">
+            Source:{" "}
+            {source === "demo"
+              ? "Demo history + your saves"
+              : source === "supabase"
+                ? "Supabase + demo"
+                : source === "mixed"
+                  ? "Supabase + local + demo"
+                  : "Local + demo"}
+          </span>
         </div>
 
         <div className="mt-8 glass-card overflow-hidden rounded-2xl">
-          {loading ? (
-            <p className="p-8 text-center text-sm text-zinc-500">Loading battles…</p>
-          ) : battles.length === 0 ? (
-            <div className="flex flex-col items-center p-12 text-center text-zinc-500">
-              <History className="size-10 text-zinc-700" />
-              <p className="mt-3 text-sm">No battles saved yet.</p>
-              <Link href="/battle" className="mt-4 text-sm text-cyan-400 hover:underline">
-                Run your first battle →
-              </Link>
-            </div>
-          ) : (
-            <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[720px] text-sm">
               <thead className="bg-white/5 text-left text-xs uppercase tracking-wider text-zinc-500">
                 <tr>
                   <th className="px-4 py-3">When</th>
+                  <th className="px-4 py-3">Type</th>
                   <th className="px-4 py-3">Challenge</th>
+                  <th className="px-4 py-3">Variants</th>
                   <th className="px-4 py-3">Winner</th>
-                  <th className="px-4 py-3">Mode</th>
+                  <th className="px-4 py-3 text-right">Score</th>
+                  <th className="px-4 py-3 text-right">Cost</th>
                   <th className="px-4 py-3 text-right">Tokens</th>
+                  <th className="px-4 py-3" />
                 </tr>
               </thead>
               <tbody>
@@ -99,28 +105,48 @@ export function BattlesListView() {
                     <td className="px-4 py-3 text-xs text-zinc-500">
                       {new Date(b.savedAt).toLocaleString()}
                     </td>
+                    <td className="px-4 py-3 text-xs text-zinc-400">{b.battleType}</td>
                     <td className="px-4 py-3">
-                      <Link href={`/battles/${b.id}`} className="font-medium text-zinc-200 hover:text-cyan-300">
+                      <Link
+                        href={`/battles/${b.id}`}
+                        className="font-medium text-zinc-200 hover:text-cyan-300"
+                      >
                         {b.title}
                       </Link>
                       <p className="text-xs capitalize text-zinc-500">
                         {b.topic} · {b.difficulty}
                       </p>
                     </td>
+                    <td className="px-4 py-3 font-mono text-zinc-400">{b.variants}</td>
                     <td className="px-4 py-3 text-zinc-300">
                       {b.winnerAgentId
                         ? getAgentById(b.winnerAgentId as AgentPersonaId)?.name ?? b.winnerAgentId
                         : "—"}
                     </td>
-                    <td className="px-4 py-3 capitalize text-zinc-400">{b.mode}</td>
+                    <td className="px-4 py-3 text-right font-mono text-emerald-300">
+                      {b.winnerScore > 0 ? b.winnerScore.toFixed(1) : "—"}
+                    </td>
+                    <td className="px-4 py-3 text-right font-mono text-cyan-300">
+                      {b.costUsd > 0 ? `$${b.costUsd.toFixed(3)}` : "—"}
+                    </td>
                     <td className="px-4 py-3 text-right font-mono text-violet-300">
-                      {b.winnerTokens?.toLocaleString() ?? "—"}
+                      {b.totalTokens > 0
+                        ? b.totalTokens.toLocaleString()
+                        : (b.winnerTokens?.toLocaleString() ?? "—")}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <Link
+                        href={`/battles/${b.id}`}
+                        className="inline-flex items-center gap-1 text-xs text-cyan-400 hover:underline"
+                      >
+                        <Play className="size-3" /> Replay
+                      </Link>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          )}
+          </div>
         </div>
       </main>
     </div>

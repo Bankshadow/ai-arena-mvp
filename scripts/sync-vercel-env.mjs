@@ -79,24 +79,38 @@ async function vercelFetch(path, token, init = {}) {
   return data;
 }
 
-async function findProject(token) {
-  const teamId = process.env.VERCEL_TEAM_ID?.trim();
+async function resolveTeamId(token) {
+  if (process.env.VERCEL_TEAM_ID?.trim()) return process.env.VERCEL_TEAM_ID.trim();
+  const teams = await vercelFetch("/v2/teams", token);
+  const hit =
+    teams.teams?.find((t) => t.slug === "bankshadow") ??
+    teams.teams?.find((t) => t.name === "BANKSHADOW") ??
+    teams.teams?.[0];
+  return hit?.id;
+}
+
+async function findProject(token, teamId) {
   const qs = teamId ? `?teamId=${teamId}` : "";
   const projects = await vercelFetch(`/v9/projects${qs}`, token);
-  const names = ["ai-arena-mvp", "ai-arena-drab", "ai-arena"];
+  const list = projects.projects ?? [];
+  if (list.length === 0) {
+    throw new Error("Vercel project list empty — check VERCEL_TEAM_ID or run npx vercel login");
+  }
+
+  const preferred = process.env.VERCEL_PROJECT_NAME?.trim();
+  const names = preferred
+    ? [preferred]
+    : ["ai-arena", "ai-arena-mvp", "ai-arena-drab"];
+
   for (const name of names) {
-    const hit = projects.projects?.find(
-      (p) => p.name === name || p.link?.repo === "Bankshadow/ai-arena-mvp",
-    );
+    const hit = list.find((p) => p.name === name);
     if (hit) return hit;
   }
-  const byRepo = projects.projects?.find(
-    (p) => p.link?.repo?.includes("ai-arena"),
-  );
+
+  const byRepo = list.find((p) => p.link?.repo?.includes("ai-arena"));
   if (byRepo) return byRepo;
-  throw new Error(
-    `Vercel project not found. Projects: ${projects.projects?.map((p) => p.name).join(", ") ?? "none"}`,
-  );
+
+  throw new Error(`Vercel project not found. Projects: ${list.map((p) => p.name).join(", ")}`);
 }
 
 function isPlaceholder(val) {
@@ -152,8 +166,8 @@ async function triggerDeploy(project, token, teamId) {
 async function main() {
   const token = getToken();
   const local = loadEnvLocal();
-  const project = await findProject(token);
-  const teamId = project.accountId?.startsWith("team_") ? project.accountId : undefined;
+  const teamId = await resolveTeamId(token);
+  const project = await findProject(token, teamId);
 
   console.log(`Vercel project: ${project.name} (${project.id})`);
 

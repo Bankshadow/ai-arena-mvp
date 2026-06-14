@@ -21,6 +21,7 @@ export const nav = {
   tools: "Tools",
   components: "Components",
   stackBuilder: "Stack",
+  lab: "Lab",
   enterprise: "สำหรับองค์กร",
   account: "บัญชี",
   admin: "แอดมิน",

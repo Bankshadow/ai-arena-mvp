@@ -6,6 +6,7 @@ import { Trophy } from "lucide-react";
 import { useTranslations } from "@/components/i18n/locale-provider";
 import { LeaderboardTable, type LeaderboardRow } from "@/components/LeaderboardTable";
 import { Nav } from "@/components/Nav";
+import { ScoreHelp } from "@/components/scoring/score-help";
 import type { UnifiedLeaderboardMeta } from "@/lib/leaderboard/unified";
 
 export type LeaderboardViewProps = {
@@ -45,6 +46,10 @@ export function LeaderboardView({ rows, source, meta }: LeaderboardViewProps) {
               {lb.title}
             </h1>
             <p className="mt-2 text-zinc-400">{subtitle}</p>
+            <div className="mt-3 flex flex-wrap gap-4">
+              <ScoreHelp system="challenge" />
+              <ScoreHelp system="agent_simulation" />
+            </div>
             {meta && meta.total > 0 && (
               <p className="mt-2 text-xs text-zinc-500">
                 {lb.sourcesLabel}: {meta.sources.human} human · {meta.sources.agent} agents ·{" "}
