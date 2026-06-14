@@ -5,6 +5,7 @@ import {
   getCompetitor,
 } from "@/lib/tournament/agents";
 import { buildAgentConstitutionUsage } from "@/lib/constitution/tournament-bridge";
+import { buildChallengePreviewFromIdea } from "@/lib/tournament/challenge-idea-preview";
 import { breakdownEvaluation } from "@/lib/tournament/scoring";
 import type {
   AgentRun,
@@ -77,22 +78,9 @@ export function generateChallengeIdeasMock(round: number): ChallengeIdea[] {
 
 export function selectBestChallengeMock(ideas: ChallengeIdea[]): Challenge {
   const best = [...ideas].sort((a, b) => b.selectionScore - a.selectionScore)[0]!;
-  const passThreshold = best.difficulty === "easy" ? 62 : best.difficulty === "hard" ? 72 : 66;
-
   return {
+    ...buildChallengePreviewFromIdea(best),
     id: newId(),
-    title: best.title,
-    brief: best.brief,
-    inputDoc:
-      `SOURCE DOCUMENT — ${best.title.toUpperCase()}\n\n` +
-      `Context: Internal memo on ${best.topic}. Key metrics include 18% YoY growth, ` +
-      `91% gross retention, $4.2M initiative budget, and 47 open integration requests. ` +
-      `Top risks: pricing pressure, compliance review, engineering capacity. ` +
-      `Q4 priorities: expand rollout, reduce time-to-value, launch self-serve dashboard.`,
-    outputFormat: "## Executive Summary\n## Key Risks\n## Recommendations",
-    passThreshold,
-    costLimitUsd: 1.0,
-    selectedFrom: best.creatorId,
     createdAt: new Date().toISOString(),
   };
 }

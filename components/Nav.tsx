@@ -19,12 +19,9 @@ const PUBLIC_LINKS = [
 ];
 
 const LAB_LINKS = [
-  { href: "/battle", key: "battle" as const },
   { href: "/memory", key: "memory" as const },
   { href: "/components", key: "components" as const },
   { href: "/workflows", key: "workflows" as const },
-  { href: "/battles", key: "battles" as const },
-  { href: "/tournaments", key: "tournaments" as const },
   { href: "/account", key: "account" as const },
   { href: "/admin", key: "admin" as const },
 ];
