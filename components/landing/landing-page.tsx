@@ -4,142 +4,19 @@ import { FormEvent, useRef, useState, useTransition, type CSSProperties, type Re
 import Link from "next/link";
 
 import { joinWaitlist } from "@/app/actions/waitlist";
+import { LanguageSwitcher } from "@/components/i18n/language-switcher";
+import { useTranslations } from "@/components/i18n/locale-provider";
+import {
+  INTEREST_API_VALUES,
+  INTEREST_KEYS,
+  translateChallengeDetailLabel,
+  translateChallengeDetailValue,
+  translateLandingStatus,
+  type InterestKey,
+} from "@/lib/i18n/helpers";
+
+type InterestApiValue = (typeof INTEREST_API_VALUES)[InterestKey];
 import type { LandingPageData } from "@/lib/landing/types";
-
-const NAV_LINKS = [
-  { href: "#pain", label: "Why" },
-  { href: "#analogy", label: "Philosophy" },
-  { href: "#how-it-works", label: "How it works" },
-  { href: "#first-challenge", label: "First challenge" },
-  { href: "#leaderboard", label: "Leaderboard" },
-  { href: "/workflows", label: "Workflows" },
-  { href: "#audience", label: "Who it's for" },
-  { href: "#faq", label: "FAQ" },
-];
-
-const PAIN_CARDS = [
-  {
-    title: "Token costs are rising",
-    body: "Every extra call adds up. Teams burn budget on retries, long contexts, and overbuilt chains.",
-  },
-  {
-    title: "Context limits slow teams down",
-    body: "Large inputs force chunking hacks and quality tradeoffs. Efficiency becomes an afterthought.",
-  },
-  {
-    title: "Prompt quality is inconsistent",
-    body: "Same task, wildly different outputs. Without benchmarks, nobody knows what “good” costs.",
-  },
-  {
-    title: "No one knows the most cost-efficient workflow",
-    body: "There's no public scoreboard for quality per dollar. The best builders stay invisible.",
-  },
-];
-
-const STEPS = [
-  {
-    num: "01",
-    title: "Pick a challenge",
-    desc: "Choose a real task with fixed inputs, budget caps, and scoring rules.",
-  },
-  {
-    num: "02",
-    title: "Build a prompt or workflow",
-    desc: "Design your pipeline — models, tools, routing — to maximize results per token.",
-  },
-  {
-    num: "03",
-    title: "Submit your result",
-    desc: "Run against the same dataset as everyone else. Your cost and output are logged.",
-  },
-  {
-    num: "04",
-    title: "AI Judge scores quality and cost",
-    desc: "Automated evaluation on accuracy, completeness, and spend. No hype — just numbers.",
-  },
-  {
-    num: "05",
-    title: "Climb the leaderboard",
-    desc: "Rank by composite score. Study top workflows. Iterate and reclaim #1.",
-  },
-];
-
-const AUDIENCE = [
-  {
-    title: "Prompt Engineers",
-    body: "Prove your prompts win on quality and cost — not just vibes in a doc.",
-  },
-  {
-    title: "AI Engineers",
-    body: "Benchmark workflows, compare architectures, and ship leaner pipelines.",
-  },
-  {
-    title: "Product Teams",
-    body: "De-risk AI features with clear efficiency targets before you scale spend.",
-  },
-  {
-    title: "Enterprises",
-    body: "Identify top talent and standardize cost-aware AI practices across teams.",
-  },
-];
-
-const FAQ_ITEMS = [
-  {
-    q: "Is AI ARENA gambling?",
-    a: "No. AI ARENA is a skill-based AI efficiency challenge — not gambling. There is no wagering, random outcomes, or house odds. Competitors solve the same technical task; winners are ranked by measurable output quality and cost efficiency, like a hackathon or engineering benchmark.",
-  },
-  {
-    q: "Is AI ARENA a prompt competition?",
-    a: "It's a workflow efficiency competition. You can compete with a single prompt or a multi-step pipeline — what matters is hitting the challenge goal while minimizing cost.",
-  },
-  {
-    q: "How is the winner selected?",
-    a: "Each challenge defines a scoring formula (e.g. 80% quality + 20% cost efficiency). Our AI Judge evaluates output quality and tracks your spend. Highest composite score wins.",
-  },
-  {
-    q: "Do I need to connect my own AI account?",
-    a: "For beta, you'll connect your provider API keys so runs are billed to you and costs are measured accurately. Sandbox options may be available for select challenges.",
-  },
-  {
-    q: "When will the first challenge launch?",
-    a: "Executive Summary Battle #1 opens with the beta. We are selecting the first 50 beta challengers — join the waitlist and we'll email you when your spot is confirmed.",
-  },
-];
-
-const ROLES = [
-  "AI Builder",
-  "Prompt Engineer",
-  "Developer",
-  "Enterprise",
-  "Curious",
-] as const;
-
-const INTEREST_TYPES = [
-  "I want to compete",
-  "I want to submit a challenge",
-  "I am interested for my company",
-] as const;
-
-type Role = (typeof ROLES)[number];
-type InterestType = (typeof INTEREST_TYPES)[number];
-
-const INTEREST_CTA_META: Record<
-  InterestType,
-  { description: string; icon: string }
-> = {
-  "I want to compete": {
-    description: "Join Executive Summary Battle #1 and compete for the leaderboard.",
-    icon: "⚡",
-  },
-  "I want to submit a challenge": {
-    description: "Propose a real-world task for the community to benchmark.",
-    icon: "◈",
-  },
-  "I am interested for my company": {
-    description: "Pilot AI ARENA with your team and track cost-efficient workflows.",
-    icon: "◇",
-  },
-};
 
 const TOKEN_CHIPS = [
   { value: "1K", color: "from-zinc-600 to-zinc-800", ring: "border-zinc-500/40" },
@@ -198,16 +75,11 @@ function TokenChip({
   );
 }
 
-const defaultWaitlist = (): {
-  name: string;
-  email: string;
-  role: Role;
-  interestType: InterestType;
-} => ({
+const defaultWaitlist = (roles: readonly string[]) => ({
   name: "",
   email: "",
-  role: ROLES[0],
-  interestType: INTEREST_TYPES[0],
+  role: roles[0] ?? "AI Builder",
+  interestType: INTEREST_API_VALUES.compete as InterestApiValue,
 });
 
 type LandingPageProps = {
@@ -215,10 +87,25 @@ type LandingPageProps = {
 };
 
 export function LandingPage({ data }: LandingPageProps) {
+  const t = useTranslations();
+  const l = t.landing;
+  const roles = t.roles;
+
+  const navLinks = [
+    { href: "#pain", label: l.nav.why },
+    { href: "#analogy", label: l.nav.philosophy },
+    { href: "#how-it-works", label: l.nav.howItWorks },
+    { href: "#first-challenge", label: l.nav.firstChallenge },
+    { href: "#leaderboard", label: l.nav.leaderboard },
+    { href: "/workflows", label: l.nav.workflows },
+    { href: "#audience", label: l.nav.audience },
+    { href: "#faq", label: l.nav.faq },
+  ];
+
   const waitlistRef = useRef<HTMLElement>(null);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
-  const [waitlist, setWaitlist] = useState(defaultWaitlist);
+  const [waitlist, setWaitlist] = useState(() => defaultWaitlist(roles));
   const [submitted, setSubmitted] = useState(false);
   const [waitlistError, setWaitlistError] = useState<string | null>(null);
   const [highlightInterest, setHighlightInterest] = useState(false);
@@ -227,14 +114,15 @@ export function LandingPage({ data }: LandingPageProps) {
   const betaPercent = Math.round((data.betaSlotsClaimed / data.betaSlotsTotal) * 100);
   const spotsLeft = Math.max(0, data.betaSlotsTotal - data.betaSlotsClaimed);
   const primaryCtaHref = data.challengeOpen ? "/submit" : "#waitlist";
-  const primaryCtaLabel = data.challengeOpen ? "Submit entry" : "Join Beta Waitlist";
+  const primaryCtaLabel = data.challengeOpen ? l.nav.submitEntry : l.nav.joinBeta;
+  const statusLabel = translateLandingStatus(data.challengeStatus, t);
 
   function scrollToWaitlist() {
     waitlistRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
-  function handleInterestSelect(interest: InterestType) {
-    setWaitlist((w) => ({ ...w, interestType: interest }));
+  function handleInterestSelect(key: InterestKey) {
+    setWaitlist((w) => ({ ...w, interestType: INTEREST_API_VALUES[key] }));
     setSubmitted(false);
     setHighlightInterest(true);
     scrollToWaitlist();
@@ -263,7 +151,12 @@ export function LandingPage({ data }: LandingPageProps) {
 
   function handleSubmitAnother() {
     setSubmitted(false);
-    setWaitlist(defaultWaitlist());
+    setWaitlist(defaultWaitlist(roles));
+  }
+
+  function interestLabel(apiValue: string) {
+    const key = INTEREST_KEYS.find((k) => INTEREST_API_VALUES[k] === apiValue);
+    return key ? l.waitlist.interests[key] : apiValue;
   }
 
   return (
@@ -285,7 +178,7 @@ export function LandingPage({ data }: LandingPageProps) {
           </a>
 
           <div className="hidden items-center gap-6 lg:flex">
-            {NAV_LINKS.map((link) => (
+            {navLinks.map((link) => (
               <a
                 key={link.href}
                 href={link.href}
@@ -297,6 +190,7 @@ export function LandingPage({ data }: LandingPageProps) {
           </div>
 
           <div className="flex items-center gap-3">
+            <LanguageSwitcher className="hidden sm:flex" />
             <a
               href={primaryCtaHref}
               className="hidden rounded-full bg-white px-4 py-2 text-sm font-medium text-black transition hover:bg-zinc-200 sm:inline-block"
@@ -308,9 +202,9 @@ export function LandingPage({ data }: LandingPageProps) {
               className="flex h-10 w-10 items-center justify-center rounded-lg border border-white/10 lg:hidden"
               onClick={() => setMobileNavOpen((o) => !o)}
               aria-expanded={mobileNavOpen}
-              aria-label="Toggle menu"
+              aria-label={l.nav.menu}
             >
-              <span className="sr-only">Menu</span>
+              <span className="sr-only">{l.nav.menu}</span>
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 {mobileNavOpen ? (
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -325,7 +219,7 @@ export function LandingPage({ data }: LandingPageProps) {
         {mobileNavOpen && (
           <div className="border-t border-white/[0.06] bg-[#030303]/95 px-6 py-4 lg:hidden">
             <div className="flex flex-col gap-3">
-              {NAV_LINKS.map((link) => (
+              {navLinks.map((link) => (
                 <a
                   key={link.href}
                   href={link.href}
@@ -340,7 +234,7 @@ export function LandingPage({ data }: LandingPageProps) {
                 className="mt-2 rounded-full bg-white px-4 py-2.5 text-center text-sm font-medium text-black"
                 onClick={() => setMobileNavOpen(false)}
               >
-                Join Beta Waitlist
+                {l.nav.joinBeta}
               </a>
             </div>
           </div>
@@ -352,62 +246,60 @@ export function LandingPage({ data }: LandingPageProps) {
         <section className="flex min-h-screen flex-col items-center justify-center px-6 pt-24 pb-20 text-center">
           <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/[0.06] px-4 py-1.5 text-xs text-emerald-300/90">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_var(--accent-glow)]" />
-            {data.statusLabel}
+            {statusLabel}
             {data.dbAvailable && data.submissionCount > 0 && (
-              <span className="text-zinc-500"> · {data.submissionCount} submissions</span>
+              <span className="text-zinc-500">{l.hero.submissions(data.submissionCount)}</span>
             )}
           </div>
 
           <h1 className="max-w-4xl text-5xl font-semibold leading-[1.08] tracking-tight sm:text-6xl md:text-7xl">
-            Compete to build the{" "}
+            {l.hero.titleLead}{" "}
             <span className="bg-gradient-to-r from-emerald-300 via-cyan-300 to-violet-400 bg-clip-text text-transparent">
-              most efficient
+              {l.hero.titleHighlight}
             </span>{" "}
-            AI workflows
+            {l.hero.titleTail}
           </h1>
 
           <p className="mt-6 max-w-2xl text-lg leading-relaxed text-zinc-400 sm:text-xl">
-            Solve the same challenge. Use fewer tokens. Get better results. Climb the leaderboard.
+            {l.hero.subtitle}
           </p>
 
-          <p className="mt-4 text-sm text-zinc-500">
-            We are selecting the first 50 beta challengers.
-          </p>
+          <p className="mt-4 text-sm text-zinc-500">{l.hero.betaCohort}</p>
 
           <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
             <a
               href={`/challenge/${data.challengeSlug}`}
               className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-6 py-3.5 text-sm font-medium text-cyan-300 transition hover:bg-cyan-500/20"
             >
-              First Challenge
+              {l.hero.firstChallenge}
             </a>
             <a
               href="/submit"
               className="rounded-full bg-gradient-to-r from-cyan-500 to-violet-600 px-6 py-3.5 text-sm font-semibold text-black"
             >
-              Submit Solution
+              {l.hero.submitSolution}
             </a>
             <a
               href="/leaderboard"
               className="rounded-full border border-white/15 px-6 py-3.5 text-sm font-medium text-zinc-300 transition hover:border-white/30 hover:bg-white/[0.04]"
             >
-              Leaderboard
+              {l.hero.leaderboard}
             </a>
             <a
               href="/workflows"
               className="rounded-full border border-violet-500/30 bg-violet-500/10 px-6 py-3.5 text-sm font-medium text-violet-300"
             >
-              Workflows
+              {l.hero.workflows}
             </a>
           </div>
 
           <div className="mt-16 flex flex-wrap items-center justify-center gap-3 font-mono text-xs text-zinc-500">
-            {["Challenge", "Workflow", "Score", "Leaderboard"].map((step, i) => (
+            {l.hero.loop.map((step, i) => (
               <span key={step} className="flex items-center gap-3">
                 <span className="rounded border border-white/10 bg-white/[0.03] px-3 py-1.5 text-zinc-300">
                   {step}
                 </span>
-                {i < 3 && <span className="text-zinc-600">→</span>}
+                {i < l.hero.loop.length - 1 && <span className="text-zinc-600">→</span>}
               </span>
             ))}
           </div>
@@ -416,12 +308,12 @@ export function LandingPage({ data }: LandingPageProps) {
         {/* Pain Points */}
         <section id="pain" className="border-t border-white/[0.06] px-6 py-28">
           <div className="mx-auto max-w-6xl">
-            <SectionLabel>Why AI ARENA</SectionLabel>
+            <SectionLabel>{l.pain.label}</SectionLabel>
             <h2 className="mt-4 max-w-3xl text-3xl font-semibold tracking-tight sm:text-4xl md:text-5xl">
-              AI is powerful. But inefficient AI is expensive.
+              {l.pain.title}
             </h2>
             <div className="mt-16 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {PAIN_CARDS.map((card) => (
+              {l.pain.cards.map((card) => (
                 <div
                   key={card.title}
                   className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-6 transition hover:border-emerald-500/25 hover:bg-white/[0.04]"
@@ -439,20 +331,14 @@ export function LandingPage({ data }: LandingPageProps) {
         <section id="analogy" className="border-t border-white/[0.06] px-6 py-28">
           <div className="mx-auto grid max-w-6xl items-center gap-16 lg:grid-cols-2">
             <div>
-              <SectionLabel accent="violet">Philosophy</SectionLabel>
+              <SectionLabel accent="violet">{l.analogy.label}</SectionLabel>
               <h2 className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">
-                Token is the chip of AI.
+                {l.analogy.title}
               </h2>
               <div className="mt-6 space-y-4 text-zinc-400 leading-relaxed">
-                <p>
-                  In poker, the best player is not the one who spends the most chips. The best player
-                  maximizes expected value.
-                </p>
-                <p>AI works the same way.</p>
-                <p>
-                  The best workflow is not the most expensive one. It is the one that delivers the
-                  best result with the lowest cost.
-                </p>
+                <p>{l.analogy.p1}</p>
+                <p>{l.analogy.p2}</p>
+                <p>{l.analogy.p3}</p>
               </div>
             </div>
 
@@ -472,16 +358,16 @@ export function LandingPage({ data }: LandingPageProps) {
                     ))}
                   </div>
                   <p className="mt-10 text-center font-mono text-xs text-zinc-500">
-                    SPEND FEWER TOKENS · WIN MORE VALUE
+                    {l.analogy.chipFooter}
                   </p>
                   <div className="mt-6 grid grid-cols-2 gap-3 border-t border-white/10 pt-6 text-sm">
                     <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-3 py-2">
-                      <span className="block text-xs text-zinc-500">High EV</span>
-                      <span className="text-emerald-400">94 quality · $0.08</span>
+                      <span className="block text-xs text-zinc-500">{l.analogy.highEv}</span>
+                      <span className="text-emerald-400">{l.analogy.highEvValue}</span>
                     </div>
                     <div className="rounded-lg border border-red-500/20 bg-red-500/5 px-3 py-2">
-                      <span className="block text-xs text-zinc-500">Low EV</span>
-                      <span className="text-red-400/90">72 quality · $0.42</span>
+                      <span className="block text-xs text-zinc-500">{l.analogy.lowEv}</span>
+                      <span className="text-red-400/90">{l.analogy.lowEvValue}</span>
                     </div>
                   </div>
                 </div>
@@ -493,13 +379,13 @@ export function LandingPage({ data }: LandingPageProps) {
         {/* How It Works */}
         <section id="how-it-works" className="border-t border-white/[0.06] px-6 py-28">
           <div className="mx-auto max-w-6xl text-center">
-            <SectionLabel>How it works</SectionLabel>
+            <SectionLabel>{l.howItWorks.label}</SectionLabel>
             <h2 className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">
-              Five steps to the top of the board
+              {l.howItWorks.title}
             </h2>
           </div>
           <div className="mx-auto mt-16 grid max-w-6xl gap-4 sm:grid-cols-2 lg:grid-cols-5">
-            {STEPS.map((step) => (
+            {l.howItWorks.steps.map((step) => (
               <div
                 key={step.title}
                 className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-5 text-left"
@@ -515,24 +401,19 @@ export function LandingPage({ data }: LandingPageProps) {
         {/* First Challenge — dedicated beta validation */}
         <section id="first-challenge" className="border-t border-white/[0.06] px-6 py-28">
           <div className="mx-auto max-w-6xl">
-            <SectionLabel accent="cyan">Beta validation · First challenge</SectionLabel>
+            <SectionLabel accent="cyan">{l.firstChallenge.label}</SectionLabel>
             <div className="mt-4 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
               <div className="max-w-2xl">
                 <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl md:text-5xl">
                   {data.challengeName}
                 </h2>
-                <p className="mt-4 text-zinc-400 leading-relaxed">
-                  Our first live benchmark. Same 20-page PDF, same $1 cap — prove your workflow
-                  delivers the best executive summary for the lowest cost.
-                </p>
-                <p className="mt-3 text-sm font-medium text-emerald-400/90">
-                  We are selecting the first 50 beta challengers.
-                </p>
+                <p className="mt-4 text-zinc-400 leading-relaxed">{l.firstChallenge.description}</p>
+                <p className="mt-3 text-sm font-medium text-emerald-400/90">{l.firstChallenge.betaSelect}</p>
               </div>
 
               <div className="w-full max-w-xs shrink-0 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
                 <div className="flex items-center justify-between text-xs text-zinc-500">
-                  <span>Beta cohort fill rate</span>
+                  <span>{l.firstChallenge.fillRate}</span>
                   <span className="font-mono text-zinc-300">
                     {data.betaSlotsClaimed}/{data.betaSlotsTotal}
                   </span>
@@ -544,7 +425,7 @@ export function LandingPage({ data }: LandingPageProps) {
                   />
                 </div>
                 <p className="mt-2 text-xs text-zinc-500">
-                  <span className="text-amber-300/90">{spotsLeft} spots</span> remaining in cohort
+                  <span className="text-amber-300/90">{l.firstChallenge.spotsRemaining(spotsLeft)}</span>
                 </p>
               </div>
             </div>
@@ -553,7 +434,7 @@ export function LandingPage({ data }: LandingPageProps) {
               <div className="border-b border-white/10 px-6 py-5 sm:px-8">
                 <div className="flex flex-wrap items-center gap-3">
                   <span className="rounded-md border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 font-mono text-xs text-cyan-300">
-                    CHALLENGE-001
+                    {l.firstChallenge.challengeCode}
                   </span>
                   <span
                     className={`rounded-full border px-3 py-0.5 text-xs font-medium ${
@@ -562,7 +443,7 @@ export function LandingPage({ data }: LandingPageProps) {
                         : "border-amber-500/30 bg-amber-500/10 text-amber-300"
                     }`}
                   >
-                    {data.statusLabel}
+                    {statusLabel}
                   </span>
                 </div>
               </div>
@@ -571,9 +452,11 @@ export function LandingPage({ data }: LandingPageProps) {
                 {data.challengeDetails.map((row) => (
                   <div key={row.label} className="bg-[#030303] px-6 py-5 sm:px-8">
                     <p className="text-xs font-medium uppercase tracking-wider text-zinc-500">
-                      {row.label}
+                      {translateChallengeDetailLabel(row.label, t)}
                     </p>
-                    <p className="mt-1 text-sm text-zinc-200">{row.value}</p>
+                    <p className="mt-1 text-sm text-zinc-200">
+                      {translateChallengeDetailValue(row.label, row.value, t)}
+                    </p>
                   </div>
                 ))}
               </div>
@@ -584,38 +467,35 @@ export function LandingPage({ data }: LandingPageProps) {
                 href={`/challenge/${data.challengeSlug}`}
                 className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-6 py-3 text-sm font-medium text-cyan-300 transition hover:bg-cyan-500/20"
               >
-                View challenge details
+                {l.firstChallenge.viewDetails}
               </Link>
               <Link
                 href="/submit"
                 className="rounded-full bg-gradient-to-r from-cyan-500 to-violet-600 px-6 py-3 text-sm font-semibold text-black"
               >
-                Submit solution
+                {l.firstChallenge.submitSolution}
               </Link>
               <Link
                 href="/leaderboard"
                 className="rounded-full border border-white/15 px-6 py-3 text-sm font-medium text-zinc-300 hover:bg-white/[0.04]"
               >
-                Leaderboard
+                {l.firstChallenge.leaderboard}
               </Link>
             </div>
 
             <div className="mt-12">
-              <p className="text-center text-sm font-medium text-zinc-300">
-                How do you want to participate?
-              </p>
-              <p className="mt-1 text-center text-xs text-zinc-500">
-                Select your interest — we&apos;ll pre-fill the beta waitlist for you.
-              </p>
+              <p className="text-center text-sm font-medium text-zinc-300">{l.firstChallenge.participate}</p>
+              <p className="mt-1 text-center text-xs text-zinc-500">{l.firstChallenge.participateHint}</p>
               <div className="mt-6 grid gap-4 md:grid-cols-3">
-                {INTEREST_TYPES.map((interest) => {
-                  const meta = INTEREST_CTA_META[interest];
-                  const isActive = waitlist.interestType === interest;
+                {INTEREST_KEYS.map((key) => {
+                  const meta = l.waitlist.interestMeta[key];
+                  const apiValue = INTEREST_API_VALUES[key];
+                  const isActive = waitlist.interestType === apiValue;
                   return (
                     <button
-                      key={interest}
+                      key={key}
                       type="button"
-                      onClick={() => handleInterestSelect(interest)}
+                      onClick={() => handleInterestSelect(key)}
                       className={`group rounded-2xl border p-6 text-left transition ${
                         isActive
                           ? "border-emerald-500/50 bg-emerald-500/[0.08] ring-1 ring-emerald-500/30"
@@ -625,10 +505,12 @@ export function LandingPage({ data }: LandingPageProps) {
                       <span className="text-2xl" aria-hidden>
                         {meta.icon}
                       </span>
-                      <h3 className="mt-3 text-base font-semibold leading-snug">{interest}</h3>
+                      <h3 className="mt-3 text-base font-semibold leading-snug">
+                        {l.waitlist.interests[key]}
+                      </h3>
                       <p className="mt-2 text-sm leading-relaxed text-zinc-400">{meta.description}</p>
                       <span className="mt-4 inline-block text-xs font-medium text-emerald-400 opacity-0 transition group-hover:opacity-100">
-                        Select & continue →
+                        {l.waitlist.selectContinue}
                       </span>
                     </button>
                   );
@@ -641,16 +523,16 @@ export function LandingPage({ data }: LandingPageProps) {
         {/* Leaderboard */}
         <section id="leaderboard" className="border-t border-white/[0.06] px-6 py-28">
           <div className="mx-auto max-w-6xl">
-            <SectionLabel>Leaderboard preview</SectionLabel>
+            <SectionLabel>{l.firstChallenge.previewTitle}</SectionLabel>
             <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-                Where efficiency becomes reputation
+                {l.firstChallenge.previewHeading}
               </h2>
               <a
                 href="/leaderboard"
                 className="text-sm font-medium text-emerald-400 hover:text-emerald-300"
               >
-                Full leaderboard →
+                {l.firstChallenge.fullLeaderboard}
               </a>
             </div>
 
@@ -658,11 +540,11 @@ export function LandingPage({ data }: LandingPageProps) {
               <table className="w-full min-w-[520px] text-left text-sm">
                 <thead>
                   <tr className="border-b border-white/10 text-xs font-medium uppercase tracking-wider text-zinc-500">
-                    <th className="px-6 py-4">Rank</th>
-                    <th className="px-6 py-4">Player</th>
-                    <th className="px-6 py-4">Quality</th>
-                    <th className="px-6 py-4">Cost</th>
-                    <th className="px-6 py-4">Score</th>
+                    <th className="px-6 py-4">{l.firstChallenge.tableRank}</th>
+                    <th className="px-6 py-4">{l.firstChallenge.tablePlayer}</th>
+                    <th className="px-6 py-4">{l.firstChallenge.tableQuality}</th>
+                    <th className="px-6 py-4">{l.firstChallenge.tableCost}</th>
+                    <th className="px-6 py-4">{l.firstChallenge.tableScore}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -714,12 +596,12 @@ export function LandingPage({ data }: LandingPageProps) {
         {/* Audience */}
         <section id="audience" className="border-t border-white/[0.06] px-6 py-28">
           <div className="mx-auto max-w-6xl">
-            <SectionLabel>Who it&apos;s for</SectionLabel>
+            <SectionLabel>{l.audience.label}</SectionLabel>
             <h2 className="mt-4 max-w-3xl text-3xl font-semibold tracking-tight sm:text-4xl">
-              Built for AI builders and cost-conscious teams
+              {l.audience.title}
             </h2>
             <div className="mt-16 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {AUDIENCE.map((card) => (
+              {l.audience.cards.map((card) => (
                 <div
                   key={card.title}
                   className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-6 transition hover:border-white/15 hover:bg-white/[0.04]"
@@ -739,14 +621,15 @@ export function LandingPage({ data }: LandingPageProps) {
           className="scroll-mt-24 border-t border-white/[0.06] px-6 py-28"
         >
           <div className="mx-auto max-w-lg">
-            <SectionLabel>Join the beta</SectionLabel>
+            <SectionLabel>{l.waitlist.label}</SectionLabel>
             <h2 className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">
-              Validate your spot in the first cohort
+              {l.waitlist.title}
             </h2>
-            <p className="mt-4 text-zinc-400">
-              Tell us who you are and how you want to participate. We are selecting the first 50
-              beta challengers for Executive Summary Battle #1.
-            </p>
+            <p className="mt-4 text-zinc-400">{l.waitlist.subtitle}</p>
+
+            {!data.dbAvailable && (
+              <p className="mt-4 text-sm text-amber-300/90">{l.waitlist.dbUnavailable}</p>
+            )}
 
             {submitted ? (
               <div
@@ -756,22 +639,14 @@ export function LandingPage({ data }: LandingPageProps) {
                 <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/20 text-xl">
                   ✓
                 </div>
-                <p className="mt-4 text-lg font-semibold text-emerald-300">
-                  You&apos;re on the beta waitlist
-                </p>
-                <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-                  Thanks, <span className="text-white">{waitlist.name}</span>. We received your
-                  interest as{" "}
-                  <span className="text-white">{waitlist.interestType}</span>. We&apos;ll email{" "}
-                  <span className="text-white">{waitlist.email}</span> if you&apos;re selected for
-                  the first 50 challengers.
-                </p>
+                <p className="mt-4 text-lg font-semibold text-emerald-300">{l.waitlist.successTitle}</p>
+                <p className="mt-2 text-sm leading-relaxed text-zinc-400">{l.waitlist.successBody}</p>
                 <button
                   type="button"
                   onClick={handleSubmitAnother}
                   className="mt-6 text-sm font-medium text-emerald-400 hover:text-emerald-300"
                 >
-                  Submit another response
+                  {l.waitlist.submitAnother}
                 </button>
               </div>
             ) : (
@@ -789,19 +664,19 @@ export function LandingPage({ data }: LandingPageProps) {
                       : "border-white/10 bg-white/[0.02] text-zinc-400"
                   }`}
                 >
-                  Selected interest:{" "}
-                  <span className="font-medium text-white">{waitlist.interestType}</span>
+                  {l.waitlist.interest}:{" "}
+                  <span className="font-medium text-white">{interestLabel(waitlist.interestType)}</span>
                 </div>
 
                 <div>
                   <label htmlFor="name" className="mb-1.5 block text-xs font-medium text-zinc-400">
-                    Name
+                    {l.waitlist.name}
                   </label>
                   <input
                     id="name"
                     type="text"
                     required
-                    placeholder="Your name"
+                    placeholder={l.waitlist.name}
                     value={waitlist.name}
                     onChange={(e) => setWaitlist((w) => ({ ...w, name: e.target.value }))}
                     className="h-12 w-full rounded-xl border border-white/15 bg-white/[0.04] px-4 text-sm text-white placeholder:text-zinc-500 outline-none transition focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/20"
@@ -809,7 +684,7 @@ export function LandingPage({ data }: LandingPageProps) {
                 </div>
                 <div>
                   <label htmlFor="email" className="mb-1.5 block text-xs font-medium text-zinc-400">
-                    Email
+                    {l.waitlist.email}
                   </label>
                   <input
                     id="email"
@@ -823,17 +698,15 @@ export function LandingPage({ data }: LandingPageProps) {
                 </div>
                 <div>
                   <label htmlFor="role" className="mb-1.5 block text-xs font-medium text-zinc-400">
-                    Role
+                    {l.waitlist.role}
                   </label>
                   <select
                     id="role"
                     value={waitlist.role}
-                    onChange={(e) =>
-                      setWaitlist((w) => ({ ...w, role: e.target.value as Role }))
-                    }
+                    onChange={(e) => setWaitlist((w) => ({ ...w, role: e.target.value }))}
                     className="h-12 w-full appearance-none rounded-xl border border-white/15 bg-white/[0.04] px-4 text-sm text-white outline-none transition focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/20"
                   >
-                    {ROLES.map((role) => (
+                    {roles.map((role) => (
                       <option key={role} value={role} className="bg-zinc-900">
                         {role}
                       </option>
@@ -845,7 +718,7 @@ export function LandingPage({ data }: LandingPageProps) {
                     htmlFor="interestType"
                     className="mb-1.5 block text-xs font-medium text-zinc-400"
                   >
-                    Interest type
+                    {l.waitlist.interest}
                   </label>
                   <select
                     id="interestType"
@@ -853,16 +726,16 @@ export function LandingPage({ data }: LandingPageProps) {
                     onChange={(e) =>
                       setWaitlist((w) => ({
                         ...w,
-                        interestType: e.target.value as InterestType,
+                        interestType: e.target.value as InterestApiValue,
                       }))
                     }
                     className={`h-12 w-full appearance-none rounded-xl border bg-white/[0.04] px-4 text-sm text-white outline-none transition focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/20 ${
                       highlightInterest ? "border-emerald-500/50" : "border-white/15"
                     }`}
                   >
-                    {INTEREST_TYPES.map((interest) => (
-                      <option key={interest} value={interest} className="bg-zinc-900">
-                        {interest}
+                    {INTEREST_KEYS.map((key) => (
+                      <option key={key} value={INTEREST_API_VALUES[key]} className="bg-zinc-900">
+                        {l.waitlist.interests[key]}
                       </option>
                     ))}
                   </select>
@@ -872,27 +745,23 @@ export function LandingPage({ data }: LandingPageProps) {
                   disabled={isWaitlistPending || !data.dbAvailable}
                   className="h-12 w-full rounded-full bg-emerald-500 text-sm font-semibold text-black transition hover:bg-emerald-400 disabled:opacity-50"
                 >
-                  {isWaitlistPending ? "Saving…" : "Join Beta Waitlist"}
+                  {isWaitlistPending ? l.waitlist.saving : l.waitlist.joinButton}
                 </button>
               </form>
               </>
             )}
 
-            <p className="mt-6 text-center text-xs text-zinc-600">
-              No payment required. No spam. We&apos;ll only email you about beta access.
-            </p>
+            <p className="mt-6 text-center text-xs text-zinc-600">{l.waitlist.footer}</p>
           </div>
         </section>
 
         {/* FAQ */}
         <section id="faq" className="border-t border-white/[0.06] px-6 py-28">
           <div className="mx-auto max-w-3xl">
-            <SectionLabel>FAQ</SectionLabel>
-            <h2 className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">
-              Common questions
-            </h2>
+            <SectionLabel>{l.faq.label}</SectionLabel>
+            <h2 className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">{l.faq.title}</h2>
             <div className="mt-12 divide-y divide-white/[0.08] rounded-2xl border border-white/10 bg-white/[0.02]">
-              {FAQ_ITEMS.map((item, i) => {
+              {l.faq.items.map((item, i) => {
                 const isOpen = openFaq === i;
                 return (
                   <div key={item.q}>
@@ -923,12 +792,8 @@ export function LandingPage({ data }: LandingPageProps) {
         {/* Final CTA */}
         <section className="border-t border-white/[0.06] px-6 py-28">
           <div className="mx-auto max-w-3xl rounded-3xl border border-white/10 bg-gradient-to-b from-emerald-500/[0.08] to-transparent px-8 py-16 text-center sm:px-12">
-            <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-              Ready to compete in the first AI efficiency challenge?
-            </h2>
-            <p className="mt-3 text-sm text-zinc-500">
-              We are selecting the first 50 beta challengers.
-            </p>
+            <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">{l.finalCta.title}</h2>
+            <p className="mt-3 text-sm text-zinc-500">{l.finalCta.subtitle}</p>
             <a
               href={primaryCtaHref}
               className="mt-8 inline-flex rounded-full bg-white px-8 py-3.5 text-sm font-semibold text-black transition hover:bg-zinc-200"
@@ -941,25 +806,25 @@ export function LandingPage({ data }: LandingPageProps) {
 
       <footer className="relative z-10 border-t border-white/[0.06] px-6 py-10">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 sm:flex-row">
-          <span className="font-mono text-xs tracking-widest text-zinc-500">AI ARENA © 2026</span>
+          <span className="font-mono text-xs tracking-widest text-zinc-500">{l.footer.copyright}</span>
           <div className="flex flex-wrap justify-center gap-6 text-xs text-zinc-500">
             <a href={`/challenge/${data.challengeSlug}`} className="hover:text-zinc-300">
-              Challenge
+              {l.footer.challenge}
             </a>
             <a href="/submit" className="hover:text-zinc-300">
-              Submit
+              {l.footer.submit}
             </a>
             <a href="/leaderboard" className="hover:text-zinc-300">
-              Leaderboard
+              {l.footer.leaderboard}
             </a>
             <a href="/workflows" className="hover:text-zinc-300">
-              Workflows
+              {l.footer.workflows}
             </a>
             <a href="#waitlist" className="hover:text-zinc-300">
-              Waitlist
+              {l.footer.waitlist}
             </a>
             <a href="#faq" className="hover:text-zinc-300">
-              FAQ
+              {l.footer.faq}
             </a>
           </div>
         </div>

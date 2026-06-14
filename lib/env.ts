@@ -6,3 +6,7 @@ export function hasDatabaseUrl(): boolean {
 export function hasOpenAiKey(): boolean {
   return Boolean(process.env.OPENAI_API_KEY?.trim());
 }
+
+export function hasAnthropicKey(): boolean {
+  return Boolean(process.env.ANTHROPIC_API_KEY?.trim());
+}

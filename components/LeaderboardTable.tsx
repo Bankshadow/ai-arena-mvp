@@ -1,4 +1,7 @@
+"use client";
+
 import { formatCost } from "@/lib/data/leaderboard";
+import { useTranslations } from "@/components/i18n/locale-provider";
 
 export type LeaderboardRow = {
   rank: number;
@@ -36,10 +39,14 @@ type LeaderboardTableProps = {
 };
 
 export function LeaderboardTable({ rows, emptyMessage }: LeaderboardTableProps) {
+  const t = useTranslations();
+  const c = t.common;
+  const lb = t.leaderboard;
+
   if (rows.length === 0) {
     return (
       <p className="glass-card rounded-xl p-8 text-center text-sm text-zinc-400">
-        {emptyMessage ?? "No entries yet. Submit your solution to appear on the board."}
+        {emptyMessage ?? lb.emptyFallback}
       </p>
     );
   }
@@ -50,14 +57,14 @@ export function LeaderboardTable({ rows, emptyMessage }: LeaderboardTableProps) 
         <table className="w-full min-w-[900px] text-left text-sm">
           <thead>
             <tr className="border-b border-white/10 text-xs uppercase tracking-wider text-zinc-500">
-              <th className="px-5 py-4">Rank</th>
-              <th className="px-5 py-4">Player</th>
-              <th className="px-5 py-4">Model</th>
-              <th className="px-5 py-4 text-right">Quality</th>
-              <th className="px-5 py-4 text-right">Cost</th>
-              <th className="px-5 py-4 text-right">Cost score</th>
-              <th className="px-5 py-4 text-right">Final</th>
-              <th className="px-5 py-4">Submitted</th>
+              <th className="px-5 py-4">{c.rank}</th>
+              <th className="px-5 py-4">{c.player}</th>
+              <th className="px-5 py-4">{c.model}</th>
+              <th className="px-5 py-4 text-right">{c.quality}</th>
+              <th className="px-5 py-4 text-right">{c.cost}</th>
+              <th className="px-5 py-4 text-right">{c.costScore}</th>
+              <th className="px-5 py-4 text-right">{c.finalScore}</th>
+              <th className="px-5 py-4">{c.submitted}</th>
             </tr>
           </thead>
           <tbody>

@@ -7,24 +7,21 @@ import {
   ChevronDown,
   ChevronUp,
   Loader2,
+  Play,
   RefreshCw,
   X,
 } from "lucide-react";
+import type { AgentPersonaId } from "@/lib/agents/types";
+import { AGENT_PERSONAS } from "@/lib/agents/personas";
 
 import { Nav } from "@/components/Nav";
+import { useTranslations } from "@/components/i18n/locale-provider";
 import { createBrowserSupabase, isSupabaseConfigured } from "@/lib/supabase";
 import { computeCostScore, computeFinalScore } from "@/lib/supabase/scoring";
 import type { SubmissionRow, SubmissionStatus } from "@/lib/supabase/types";
 import { DEFAULT_CHALLENGE_SLUG } from "@/lib/constants";
 
 type Filter = SubmissionStatus | "all";
-
-const FILTERS: { value: Filter; label: string }[] = [
-  { value: "pending", label: "Pending" },
-  { value: "approved", label: "Approved" },
-  { value: "rejected", label: "Rejected" },
-  { value: "all", label: "All" },
-];
 
 function statusBadge(status: SubmissionStatus) {
   if (status === "approved") return "border-emerald-500/30 bg-emerald-500/10 text-emerald-300";
@@ -33,6 +30,14 @@ function statusBadge(status: SubmissionStatus) {
 }
 
 export function AdminReviewPanel() {
+  const t = useTranslations();
+  const a = t.admin;
+  const filters: { value: Filter; label: string }[] = [
+    { value: "pending", label: a.filters.pending },
+    { value: "approved", label: a.filters.approved },
+    { value: "rejected", label: a.filters.rejected },
+    { value: "all", label: a.filters.all },
+  ];
   const configured = isSupabaseConfigured();
   const [filter, setFilter] = useState<Filter>("pending");
   const [rows, setRows] = useState<SubmissionRow[]>([]);
@@ -47,7 +52,7 @@ export function AdminReviewPanel() {
   const load = useCallback(async () => {
     const supabase = createBrowserSupabase();
     if (!supabase) {
-      setError("Supabase is not configured.");
+      setError(a.supabaseError);
       setLoading(false);
       return;
     }
@@ -109,7 +114,7 @@ export function AdminReviewPanel() {
     const draft = getDraft(row);
     const quality = parseFloat(draft.qualityScore);
     if (Number.isNaN(quality) || quality < 0 || quality > 100) {
-      setError("Quality score must be between 0 and 100.");
+      setError(a.qualityError);
       return;
     }
 
@@ -177,19 +182,17 @@ export function AdminReviewPanel() {
       <Nav />
 
       <main className="relative mx-auto max-w-5xl px-4 pb-20 pt-10 sm:px-6">
-        <p className="font-mono text-xs uppercase tracking-[0.2em] text-red-400/80">Admin</p>
-        <h1 className="mt-2 text-3xl font-semibold tracking-tight">Submission review</h1>
-        <p className="mt-2 text-zinc-400">Challenge #1 — manual quality review and scoring</p>
+        <p className="font-mono text-xs uppercase tracking-[0.2em] text-red-400/80">{a.eyebrow}</p>
+        <h1 className="mt-2 text-3xl font-semibold tracking-tight">{a.title}</h1>
+        <p className="mt-2 text-zinc-400">{a.subtitle}</p>
 
         <div className="mt-4 flex items-start gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
           <AlertTriangle className="mt-0.5 size-5 shrink-0" />
-          <span>Admin panel is unprotected in MVP mode. Do not share this URL publicly.</span>
+          <span>{a.warning}</span>
         </div>
 
         {!configured && (
-          <p className="mt-4 text-sm text-red-400">
-            Configure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.local.
-          </p>
+          <p className="mt-4 text-sm text-red-400">{a.notConfigured}</p>
         )}
 
         {error && (
@@ -198,9 +201,12 @@ export function AdminReviewPanel() {
           </p>
         )}
 
+        {/* Real Agent Runner */}
+        <AgentRunPanel />
+
         <div className="mt-8 flex flex-wrap items-center gap-3">
           <div className="flex flex-wrap gap-2">
-            {FILTERS.map((f) => (
+            {filters.map((f) => (
               <button
                 key={f.value}
                 type="button"
@@ -221,7 +227,7 @@ export function AdminReviewPanel() {
             className="ml-auto flex items-center gap-2 rounded-lg border border-white/10 px-3 py-1.5 text-sm text-zinc-400 hover:bg-white/5"
           >
             <RefreshCw className={`size-4 ${loading ? "animate-spin" : ""}`} />
-            Refresh
+            {a.refresh}
           </button>
         </div>
 
@@ -231,7 +237,7 @@ export function AdminReviewPanel() {
           </div>
         ) : rows.length === 0 ? (
           <p className="glass-card mt-8 rounded-xl p-8 text-center text-sm text-zinc-400">
-            No submissions in this filter.
+            {a.empty}
           </p>
         ) : (
           <ul className="mt-6 space-y-3">
@@ -280,22 +286,22 @@ export function AdminReviewPanel() {
 
                   {expanded && (
                     <div className="border-t border-white/10 px-5 py-5 space-y-4">
-                      <DetailBlock label="Prompt used" value={row.prompt_used} mono />
-                      <DetailBlock label="Output result" value={row.output_result} />
+                      <DetailBlock label={a.fields.promptUsed} value={row.prompt_used} mono />
+                      <DetailBlock label={a.fields.outputResult} value={row.output_result} />
                       {row.workflow_notes && (
-                        <DetailBlock label="Workflow notes" value={row.workflow_notes} />
+                        <DetailBlock label={a.fields.workflowNotes} value={row.workflow_notes} />
                       )}
                       <div className="grid gap-4 sm:grid-cols-3 text-sm">
                         <div>
-                          <p className="text-xs text-zinc-500">Model</p>
+                          <p className="text-xs text-zinc-500">{a.fields.model}</p>
                           <p className="mt-0.5">{row.model_used}</p>
                         </div>
                         <div>
-                          <p className="text-xs text-zinc-500">Role</p>
+                          <p className="text-xs text-zinc-500">{a.fields.role}</p>
                           <p className="mt-0.5">{row.role ?? "—"}</p>
                         </div>
                         <div>
-                          <p className="text-xs text-zinc-500">Submitted</p>
+                          <p className="text-xs text-zinc-500">{a.fields.submitted}</p>
                           <p className="mt-0.5 text-xs">
                             {new Date(row.created_at).toLocaleString()}
                           </p>
@@ -305,7 +311,7 @@ export function AdminReviewPanel() {
                       <div className="grid gap-4 sm:grid-cols-2">
                         <label className="block">
                           <span className="text-xs font-medium text-zinc-400">
-                            Quality score (0–100)
+                            {a.fields.qualityScore}
                           </span>
                           <input
                             type="number"
@@ -320,7 +326,7 @@ export function AdminReviewPanel() {
                           />
                         </label>
                         <label className="block">
-                          <span className="text-xs font-medium text-zinc-400">Admin notes</span>
+                          <span className="text-xs font-medium text-zinc-400">{a.fields.adminNotes}</span>
                           <input
                             type="text"
                             value={draft.adminNotes}
@@ -334,11 +340,11 @@ export function AdminReviewPanel() {
 
                       <dl className="flex flex-wrap gap-6 rounded-lg border border-white/10 bg-black/20 px-4 py-3 text-sm">
                         <div>
-                          <dt className="text-xs text-zinc-500">Cost score (auto)</dt>
+                          <dt className="text-xs text-zinc-500">{a.fields.costScoreAuto}</dt>
                           <dd className="font-mono text-cyan-400">{previewCostScore}</dd>
                         </div>
                         <div>
-                          <dt className="text-xs text-zinc-500">Final score (auto)</dt>
+                          <dt className="text-xs text-zinc-500">{a.fields.finalScoreAuto}</dt>
                           <dd className="font-mono text-violet-300">
                             {previewFinal != null ? previewFinal.toFixed(1) : "—"}
                           </dd>
@@ -357,7 +363,7 @@ export function AdminReviewPanel() {
                           ) : (
                             <Check className="size-4" />
                           )}
-                          Approve
+                          {a.approve}
                         </button>
                         <button
                           type="button"
@@ -366,7 +372,7 @@ export function AdminReviewPanel() {
                           className="inline-flex items-center gap-2 rounded-full border border-red-500/40 bg-red-500/10 px-5 py-2 text-sm font-medium text-red-300 hover:bg-red-500/20 disabled:opacity-50"
                         >
                           <X className="size-4" />
-                          Reject
+                          {a.reject}
                         </button>
                       </div>
                     </div>
@@ -378,6 +384,126 @@ export function AdminReviewPanel() {
         )}
       </main>
     </div>
+  );
+}
+
+type RunState =
+  | { status: "idle" }
+  | { status: "running" }
+  | { status: "done"; agentId: string; run: Record<string, unknown>; score: Record<string, unknown>; fullOutput: string }
+  | { status: "error"; message: string };
+
+function AgentRunPanel() {
+  const [agentId, setAgentId] = useState<AgentPersonaId>("sprinter");
+  const [state, setState] = useState<RunState>({ status: "idle" });
+
+  async function handleRun() {
+    setState({ status: "running" });
+    try {
+      const res = await fetch("/api/run-agent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ agentId, challengeSlug: "executive-summary-battle" }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setState({ status: "error", message: json.error ?? res.statusText });
+        return;
+      }
+      setState({ status: "done", agentId, run: json.run, score: json.score, fullOutput: json.fullOutput });
+    } catch (err) {
+      setState({ status: "error", message: err instanceof Error ? err.message : String(err) });
+    }
+  }
+
+  return (
+    <section className="mt-8 glass-card rounded-2xl p-6 border border-violet-500/20">
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-500/30 bg-violet-500/10 px-3 py-0.5 text-xs text-violet-300 font-mono uppercase tracking-widest">
+          Real LLM
+        </span>
+        <h2 className="text-lg font-semibold">Run Real Agent</h2>
+        <span className="text-xs text-zinc-500">Calls Anthropic API + AI Judge in real time</span>
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-end gap-4">
+        <div>
+          <label className="mb-1 block text-xs text-zinc-400">Agent persona</label>
+          <select
+            value={agentId}
+            onChange={(e) => setAgentId(e.target.value as AgentPersonaId)}
+            className="rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-zinc-200 outline-none focus:border-violet-400/40"
+          >
+            {AGENT_PERSONAS.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name} — {p.modelPref}
+              </option>
+            ))}
+          </select>
+        </div>
+        <button
+          type="button"
+          onClick={handleRun}
+          disabled={state.status === "running"}
+          className="inline-flex items-center gap-2 rounded-xl border border-violet-500/40 bg-violet-500/10 px-5 py-2 text-sm font-medium text-violet-200 hover:bg-violet-500/20 disabled:opacity-40"
+        >
+          {state.status === "running" ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <Play className="size-4" />
+          )}
+          {state.status === "running" ? "Running…" : "Run agent"}
+        </button>
+      </div>
+
+      {state.status === "running" && (
+        <p className="mt-4 text-sm text-zinc-400 animate-pulse">Calling real Anthropic API + AI Judge…</p>
+      )}
+
+      {state.status === "error" && (
+        <p className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm text-red-300">
+          {state.message}
+        </p>
+      )}
+
+      {state.status === "done" && (
+        <div className="mt-5 space-y-4">
+          <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+            {[
+              { label: "Model", value: String(state.run.modelUsed) },
+              { label: "Cost", value: `$${Number(state.run.costUsd).toFixed(4)}` },
+              { label: "Tokens in/out", value: `${state.run.tokensIn}/${state.run.tokensOut}` },
+              { label: "Latency", value: `${(Number(state.run.latencyMs) / 1000).toFixed(1)}s` },
+            ].map((item) => (
+              <div key={item.label} className="rounded-lg border border-white/10 bg-black/20 px-3 py-2">
+                <p className="text-xs text-zinc-500">{item.label}</p>
+                <p className="font-mono text-cyan-400">{item.value}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-3 gap-3 text-sm sm:grid-cols-5">
+            {Object.entries(state.run.rubric as Record<string, number>).map(([k, v]) => (
+              <div key={k} className="rounded-lg border border-white/10 bg-black/20 px-3 py-2">
+                <p className="text-xs text-zinc-500 capitalize">{k}</p>
+                <p className="font-mono text-violet-300">{v}</p>
+              </div>
+            ))}
+            <div className="rounded-lg border border-white/10 bg-black/20 px-3 py-2">
+              <p className="text-xs text-zinc-500">Final score</p>
+              <p className="font-mono font-semibold text-white">{String(state.score.finalScore)}</p>
+            </div>
+          </div>
+
+          <div>
+            <p className="mb-1 text-xs font-medium uppercase tracking-wider text-zinc-500">Agent output</p>
+            <pre className="max-h-80 overflow-auto whitespace-pre-wrap rounded-lg border border-white/10 bg-black/30 p-4 text-xs text-zinc-300">
+              {state.fullOutput}
+            </pre>
+          </div>
+        </div>
+      )}
+    </section>
   );
 }
 

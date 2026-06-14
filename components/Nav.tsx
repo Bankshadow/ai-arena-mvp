@@ -4,20 +4,28 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 
+import { LanguageSwitcher } from "@/components/i18n/language-switcher";
+import { useTranslations } from "@/components/i18n/locale-provider";
 import { cn } from "@/lib/utils";
 
 const LINKS = [
-  { href: "/", label: "Home" },
-  { href: "/challenge/executive-summary-battle", label: "Challenge" },
-  { href: "/submit", label: "Submit" },
-  { href: "/leaderboard", label: "Leaderboard" },
-  { href: "/workflows", label: "Workflows" },
-  { href: "/admin", label: "Admin" },
+  { href: "/", key: "home" as const },
+  { href: "/challenge/executive-summary-battle", key: "challenge" as const },
+  { href: "/agents", key: "agents" as const },
+  { href: "/tournament", key: "tournament" as const },
+  { href: "/battle", key: "battle" as const },
+  { href: "/battles", key: "battles" as const },
+  { href: "/arena", key: "arena" as const },
+  { href: "/leaderboard", key: "leaderboard" as const },
+  { href: "/workflows", key: "workflows" as const },
+  { href: "/enterprise", key: "enterprise" as const },
+  { href: "/admin", key: "admin" as const },
 ];
 
 export function Nav() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const t = useTranslations();
 
   return (
     <header className="sticky top-0 z-50 border-b border-white/10 bg-[#030303]/80 backdrop-blur-xl">
@@ -51,26 +59,30 @@ export function Nav() {
                     : "text-zinc-400 hover:bg-white/5 hover:text-white"
                 )}
               >
-                {link.label}
+                {t.nav[link.key]}
               </Link>
             );
           })}
+          <LanguageSwitcher className="ml-2" />
         </div>
 
-        <button
-          type="button"
-          className="flex h-10 w-10 items-center justify-center rounded-lg border border-white/10 md:hidden"
-          onClick={() => setOpen((o) => !o)}
-          aria-label="Toggle menu"
-        >
-          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            {open ? (
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            ) : (
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            )}
-          </svg>
-        </button>
+        <div className="flex items-center gap-2 md:hidden">
+          <LanguageSwitcher compact />
+          <button
+            type="button"
+            className="flex h-10 w-10 items-center justify-center rounded-lg border border-white/10"
+            onClick={() => setOpen((o) => !o)}
+            aria-label={t.nav.toggleMenu}
+          >
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              {open ? (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              ) : (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              )}
+            </svg>
+          </button>
+        </div>
       </nav>
 
       {open && (
@@ -83,7 +95,7 @@ export function Nav() {
                 className="rounded-lg px-3 py-2.5 text-sm text-zinc-300 hover:bg-white/5"
                 onClick={() => setOpen(false)}
               >
-                {link.label}
+                {t.nav[link.key]}
               </Link>
             ))}
           </div>

@@ -52,3 +52,37 @@ create policy "submissions_public_update"
   to anon, authenticated
   using (true)
   with check (true);
+
+-- MVP9: AI battle history (generate challenge → 5-agent token battle)
+
+create table if not exists public.battles (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  topic text not null,
+  difficulty text not null,
+  pass_threshold numeric not null,
+  mode text not null default 'demo',
+  winner_agent_id text,
+  winner_tokens integer,
+  passed_count integer not null default 0,
+  payload jsonb not null,
+  created_at timestamptz not null default now(),
+  constraint battles_mode_check check (mode in ('live', 'demo'))
+);
+
+create index if not exists battles_created_at_idx
+  on public.battles (created_at desc);
+
+alter table public.battles enable row level security;
+
+drop policy if exists "battles_public_insert" on public.battles;
+create policy "battles_public_insert"
+  on public.battles for insert
+  to anon, authenticated
+  with check (true);
+
+drop policy if exists "battles_public_select" on public.battles;
+create policy "battles_public_select"
+  on public.battles for select
+  to anon, authenticated
+  using (true);

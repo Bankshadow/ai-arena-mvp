@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Trophy } from "lucide-react";
 
+import { useTranslations } from "@/components/i18n/locale-provider";
 import { LeaderboardTable, type LeaderboardRow } from "@/components/LeaderboardTable";
 import { Nav } from "@/components/Nav";
 
@@ -12,16 +13,19 @@ export type LeaderboardViewProps = {
 };
 
 export function LeaderboardView({ rows, source }: LeaderboardViewProps) {
+  const t = useTranslations();
+  const lb = t.leaderboard;
+
   const subtitle =
     source === "supabase"
-      ? "Approved submissions · Final Score = Quality × 0.8 + Cost Score × 0.2"
+      ? lb.subtitleSupabase
       : source === "mock"
-        ? "Demo data — configure Supabase for live rankings"
-        : "Final Score = Quality × 0.8 + Cost Score × 0.2";
+        ? lb.subtitleMock
+        : lb.subtitleEmpty;
 
   const emptyMessage =
     source === "empty" || (source === "supabase" && rows.length === 0)
-      ? "No reviewed submissions yet."
+      ? lb.empty
       : undefined;
 
   return (
@@ -33,12 +37,10 @@ export function LeaderboardView({ rows, source }: LeaderboardViewProps) {
       <main className="relative mx-auto max-w-6xl px-4 pb-20 pt-10 sm:px-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="font-mono text-xs uppercase tracking-[0.2em] text-violet-400/80">
-              Rankings
-            </p>
+            <p className="font-mono text-xs uppercase tracking-[0.2em] text-violet-400/80">{lb.eyebrow}</p>
             <h1 className="mt-2 flex items-center gap-3 text-3xl font-semibold sm:text-4xl">
               <Trophy className="size-8 text-amber-400" />
-              Leaderboard
+              {lb.title}
             </h1>
             <p className="mt-2 text-zinc-400">{subtitle}</p>
           </div>
@@ -46,7 +48,7 @@ export function LeaderboardView({ rows, source }: LeaderboardViewProps) {
             href="/submit"
             className="shrink-0 rounded-full bg-gradient-to-r from-cyan-500 to-violet-600 px-5 py-2.5 text-sm font-semibold text-black"
           >
-            Submit solution
+            {lb.submitSolution}
           </Link>
         </div>
 

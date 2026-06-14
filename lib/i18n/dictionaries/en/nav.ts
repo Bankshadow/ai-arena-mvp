@@ -1,0 +1,41 @@
+export const nav = {
+  home: "Home",
+  challenge: "Challenge",
+  agents: "Agents",
+  tournament: "Tournament",
+  battle: "Battle",
+  battles: "History",
+  arena: "Arena",
+  submit: "Submit",
+  leaderboard: "Leaderboard",
+  workflows: "Workflows",
+  enterprise: "For Teams",
+  admin: "Admin",
+  toggleMenu: "Toggle menu",
+};
+
+export const common = {
+  submitSolution: "Submit solution",
+  viewLeaderboard: "View Leaderboard",
+  submitAnother: "Submit another",
+  loading: "Loading…",
+  refresh: "Refresh",
+  model: "Model",
+  cost: "Cost",
+  quality: "Quality",
+  rank: "Rank",
+  player: "Player",
+  submitted: "Submitted",
+  final: "Final",
+  costScore: "Cost score",
+  finalScore: "Final",
+  language: "Language",
+};
+
+export const roles = [
+  "AI Builder",
+  "Prompt Engineer",
+  "Developer",
+  "Enterprise",
+  "Curious",
+] as const;

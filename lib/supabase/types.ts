@@ -32,3 +32,17 @@ export type SubmissionInsert = {
   workflow_notes?: string | null;
   status?: SubmissionStatus;
 };
+
+export type BattleRow = {
+  id: string;
+  title: string;
+  topic: string;
+  difficulty: string;
+  pass_threshold: number;
+  mode: string;
+  winner_agent_id: string | null;
+  winner_tokens: number | null;
+  passed_count: number;
+  payload: Record<string, unknown>;
+  created_at: string;
+};

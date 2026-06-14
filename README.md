@@ -33,6 +33,12 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
+## Languages (EN / TH)
+
+The site supports **English** and **Thai**. Use the **EN | TH** switcher in the nav (or landing header). Your choice is saved in the `ai-arena-locale` cookie and applied on the next visit.
+
+Translation files live under `lib/i18n/dictionaries/en/` and `lib/i18n/dictionaries/th/`.
+
 ### Test the full flow
 
 1. **Submit** — [http://localhost:3000/submit](http://localhost:3000/submit)  

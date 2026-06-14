@@ -1,16 +1,14 @@
+"use client";
+
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { Download, GitBranch, Scale, Target, Trophy, Users } from "lucide-react";
 
+import { useTranslations } from "@/components/i18n/locale-provider";
 import { Nav } from "@/components/Nav";
 import { StatCard } from "@/components/StatCard";
+import { translateChallengeStatus } from "@/lib/i18n/helpers";
 import type { ChallengePageData } from "@/lib/queries/challenge-page";
-
-const OUTPUT_REQUIREMENTS = [
-  "Executive Summary",
-  "Key Risks",
-  "Recommendations",
-];
 
 function statusStyles(status: string) {
   if (status === "open") {
@@ -27,12 +25,15 @@ type ChallengeDetailProps = {
 };
 
 export function ChallengeDetail({ data }: ChallengeDetailProps) {
+  const t = useTranslations();
+  const c = t.challenge;
   const { view } = data;
   const qualityPct = Math.round(parseFloat(view.scoringFormula.breakdown[0]?.weight ?? "80"));
   const costPct = Math.round(parseFloat(view.scoringFormula.breakdown[1]?.weight ?? "20"));
+  const statusLabel = translateChallengeStatus(view.status, t);
 
   const joinHref = view.isOpen ? "/submit" : "/#waitlist";
-  const joinLabel = view.isOpen ? "Submit entry" : "Join waitlist";
+  const joinLabel = view.isOpen ? c.submitEntry : c.joinWaitlist;
 
   return (
     <div className="relative min-h-screen bg-[#030303] text-zinc-100">
@@ -43,15 +44,15 @@ export function ChallengeDetail({ data }: ChallengeDetailProps) {
       <main className="relative mx-auto max-w-4xl px-4 pb-20 pt-10 sm:px-6">
         <div className="flex flex-wrap items-center gap-3">
           <span className="inline-flex rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-xs font-medium text-cyan-300">
-            Challenge #001
+            {c.badge}
           </span>
           <span
             className={`inline-flex rounded-full border px-3 py-1 text-xs font-medium ${statusStyles(view.status)}`}
           >
-            {data.statusLabel}
+            {statusLabel}
           </span>
           {data.dbAvailable && (
-            <span className="text-xs text-zinc-500">Live stats from database</span>
+            <span className="text-xs text-zinc-500">{c.liveStats}</span>
           )}
         </div>
 
@@ -60,42 +61,27 @@ export function ChallengeDetail({ data }: ChallengeDetailProps) {
         <p className="mt-4 text-lg leading-relaxed text-zinc-400">{view.description}</p>
 
         <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard label="Cost limit" value={`$${view.costLimitUsd.toFixed(2)}`} />
-          <StatCard label="Attempts" value={String(view.attempts)} />
-          <StatCard label="Scoring" value={`${qualityPct}% Q + ${costPct}% Cost`} />
-          <StatCard label="Deadline" value={view.deadlineLabel} />
+          <StatCard label={c.costLimit} value={`$${view.costLimitUsd.toFixed(2)}`} />
+          <StatCard label={c.attempts} value={String(view.attempts)} />
+          <StatCard label={c.scoring} value={c.scoringFormat(qualityPct, costPct)} />
+          <StatCard label={c.deadline} value={view.deadlineLabel} />
         </div>
 
         {data.dbAvailable && (
           <div className="glass-card mt-6 grid gap-px overflow-hidden rounded-2xl sm:grid-cols-3">
-            <StatBlock
-              icon={<Users className="size-4 text-cyan-400" />}
-              label="Submissions"
-              value={String(data.submissionCount)}
-            />
-            <StatBlock
-              icon={<Users className="size-4 text-violet-400" />}
-              label="Players"
-              value={String(data.uniquePlayers)}
-            />
-            <StatBlock
-              icon={<Trophy className="size-4 text-amber-400" />}
-              label="Scored"
-              value={String(data.scoredCount)}
-            />
+            <StatBlock icon={<Users className="size-4 text-cyan-400" />} label={c.submissions} value={String(data.submissionCount)} />
+            <StatBlock icon={<Users className="size-4 text-violet-400" />} label={c.players} value={String(data.uniquePlayers)} />
+            <StatBlock icon={<Trophy className="size-4 text-amber-400" />} label={c.scored} value={String(data.scoredCount)} />
           </div>
         )}
 
         <section className="glass-card mt-10 rounded-2xl p-6 sm:p-8">
-          <h2 className="text-xl font-semibold">Description</h2>
+          <h2 className="text-xl font-semibold">{c.description}</h2>
           <p className="mt-3 text-zinc-400 leading-relaxed">{view.description}</p>
           {view.inputFileUrl && (
-            <a
-              href={view.inputFileUrl}
-              className="mt-4 inline-flex items-center gap-2 text-sm text-cyan-400 hover:text-cyan-300"
-            >
+            <a href={view.inputFileUrl} className="mt-4 inline-flex items-center gap-2 text-sm text-cyan-400 hover:text-cyan-300">
               <Download className="size-4" />
-              Download challenge input (PDF)
+              {c.downloadPdf}
             </a>
           )}
         </section>
@@ -103,21 +89,21 @@ export function ChallengeDetail({ data }: ChallengeDetailProps) {
         <section className="glass-card mt-6 rounded-2xl p-6 sm:p-8">
           <h2 className="flex items-center gap-2 text-xl font-semibold">
             <Target className="size-5 text-violet-400" />
-            Input & output
+            {c.inputOutput}
           </h2>
           <p className="mt-3 text-sm text-zinc-400">
-            <span className="font-medium text-zinc-200">Input:</span> {view.input}
+            <span className="font-medium text-zinc-200">{c.inputLabel}</span> {view.input}
           </p>
-          <p className="mt-4 text-sm font-medium text-zinc-300">Output requirements:</p>
+          <p className="mt-4 text-sm font-medium text-zinc-300">{c.outputRequirements}</p>
           <ol className="mt-2 list-decimal space-y-1 pl-5 text-zinc-400">
-            {OUTPUT_REQUIREMENTS.map((item) => (
+            {c.outputs.map((item) => (
               <li key={item}>{item}</li>
             ))}
           </ol>
         </section>
 
         <section className="glass-card mt-6 rounded-2xl p-6 sm:p-8">
-          <h2 className="text-xl font-semibold">Rules</h2>
+          <h2 className="text-xl font-semibold">{c.rules}</h2>
           <ul className="mt-3 space-y-2">
             {view.rules.map((rule) => (
               <li key={rule} className="flex items-start gap-2 text-sm text-zinc-400">
@@ -131,15 +117,15 @@ export function ChallengeDetail({ data }: ChallengeDetailProps) {
         <section className="glass-card mt-6 rounded-2xl p-6 sm:p-8">
           <h2 className="flex items-center gap-2 text-xl font-semibold">
             <Scale className="size-5 text-cyan-400" />
-            Scoring
+            {c.scoringTitle}
           </h2>
           <div className="mt-4 flex flex-wrap gap-4">
             <div className="rounded-xl border border-white/10 bg-black/20 px-6 py-4 text-center">
-              <p className="text-xs text-zinc-500">Quality</p>
+              <p className="text-xs text-zinc-500">{c.quality}</p>
               <p className="font-mono text-2xl font-bold text-violet-300">{qualityPct}%</p>
             </div>
             <div className="rounded-xl border border-white/10 bg-black/20 px-6 py-4 text-center">
-              <p className="text-xs text-zinc-500">Cost efficiency</p>
+              <p className="text-xs text-zinc-500">{c.costEfficiency}</p>
               <p className="font-mono text-2xl font-bold text-cyan-400">{costPct}%</p>
             </div>
           </div>
@@ -149,13 +135,10 @@ export function ChallengeDetail({ data }: ChallengeDetailProps) {
         <section className="glass-card neon-glow mt-10 rounded-2xl p-6 sm:p-8">
           <h2 className="flex items-center gap-2 text-xl font-semibold">
             <Trophy className="size-5 text-amber-400" />
-            Ready to compete?
+            {c.readyTitle}
           </h2>
           {!view.isOpen && (
-            <p className="mt-2 text-sm text-amber-300/90">
-              Submissions open when status is <strong>Open now</strong>. Run{" "}
-              <code className="text-cyan-400">npm run challenge:open</code> after seeding the DB.
-            </p>
+            <p className="mt-2 text-sm text-amber-300/90">{c.closedHint}</p>
           )}
           <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
             <Link
@@ -168,24 +151,15 @@ export function ChallengeDetail({ data }: ChallengeDetailProps) {
             >
               {joinLabel}
             </Link>
-            <Link
-              href="/submit"
-              className="inline-flex justify-center rounded-full border border-cyan-500/30 bg-cyan-500/10 px-6 py-3 text-sm font-medium text-cyan-300"
-            >
-              Submit Solution
+            <Link href="/submit" className="inline-flex justify-center rounded-full border border-cyan-500/30 bg-cyan-500/10 px-6 py-3 text-sm font-medium text-cyan-300">
+              {c.submitSolution}
             </Link>
-            <Link
-              href="/leaderboard"
-              className="inline-flex justify-center rounded-full border border-violet-500/30 bg-violet-500/10 px-6 py-3 text-sm font-medium text-violet-300"
-            >
-              View Leaderboard
+            <Link href="/leaderboard" className="inline-flex justify-center rounded-full border border-violet-500/30 bg-violet-500/10 px-6 py-3 text-sm font-medium text-violet-300">
+              {c.viewLeaderboard}
             </Link>
-            <Link
-              href="/workflows"
-              className="inline-flex items-center justify-center gap-2 rounded-full border border-white/15 px-6 py-3 text-sm font-medium text-zinc-300 hover:bg-white/5"
-            >
+            <Link href="/workflows" className="inline-flex items-center justify-center gap-2 rounded-full border border-white/15 px-6 py-3 text-sm font-medium text-zinc-300 hover:bg-white/5">
               <GitBranch className="size-4" />
-              Workflow Library
+              {c.workflowLibrary}
             </Link>
           </div>
         </section>
@@ -194,15 +168,7 @@ export function ChallengeDetail({ data }: ChallengeDetailProps) {
   );
 }
 
-function StatBlock({
-  icon,
-  label,
-  value,
-}: {
-  icon: ReactNode;
-  label: string;
-  value: string;
-}) {
+function StatBlock({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
   return (
     <div className="flex items-center gap-3 bg-black/20 px-5 py-4">
       {icon}
