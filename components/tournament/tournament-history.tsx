@@ -19,7 +19,7 @@ export function TournamentHistory({ events }: Props) {
       return ["challenges_generated", "challenge_selected", "agents_running", "evaluation_complete"].includes(e.type);
     if (tab === "Leaderboard") return e.type === "leaderboard_updated";
     if (tab === "Marketplace") return e.type === "marketplace_seeded";
-    return ["paused", "resumed", "manual_run", "loop_started", "loop_complete", "supabase_save_mock"].includes(e.type);
+    return ["paused", "resumed", "manual_run", "loop_started", "loop_complete", "supabase_save_mock", "supabase_save"].includes(e.type);
   });
 
   return (

@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Radio } from "lucide-react";
+import { History, Radio } from "lucide-react";
 
 import { AdminControls } from "@/components/tournament/admin-controls";
 import { ActiveBattlePanel } from "@/components/tournament/active-battle-panel";
@@ -18,30 +19,138 @@ import {
   getLoopIntervalMs,
   runTournamentLoop,
   type LoopStep,
+  type TournamentMode,
 } from "@/lib/tournament/engine";
-import { saveTournamentStateMock } from "@/lib/tournament/persistence";
 import type { TournamentEvent, TournamentState } from "@/lib/tournament/types";
+import { upsertLocalTournamentRound } from "@/lib/tournament/local-storage";
+import {
+  buildSavedTournamentRecord,
+  shouldAutoSaveTournament,
+} from "@/lib/tournament/saved-tournament";
+
+type EngineStatus = {
+  llmAvailable: boolean;
+  supabaseConfigured: boolean;
+  supabaseTableReady: boolean;
+  supabaseCanSave: boolean;
+  supabaseError: string | null;
+  supabaseHint: string | null;
+};
 
 export function TournamentView() {
   const [state, setState] = useState<TournamentState>(() => createInitialTournamentState());
   const [busy, setBusy] = useState(false);
   const [countdownSec, setCountdownSec] = useState<number | null>(null);
   const [persistMessage, setPersistMessage] = useState<string | null>(null);
+  const [engineMode, setEngineMode] = useState<TournamentMode>("mock");
+  const [engineStatus, setEngineStatus] = useState<EngineStatus>({
+    llmAvailable: false,
+    supabaseConfigured: false,
+    supabaseTableReady: false,
+    supabaseCanSave: false,
+    supabaseError: null,
+    supabaseHint: null,
+  });
+  const stateRef = useRef(state);
   const nextRunRef = useRef<number | null>(null);
 
-  const applyLoop = useCallback((step: LoopStep) => {
-    setState((prev) => runTournamentLoop(prev, step));
+  stateRef.current = state;
+
+  useEffect(() => {
+    fetch("/api/tournament/status")
+      .then((r) => r.json())
+      .then((data: EngineStatus) => {
+        setEngineStatus(data);
+        if (data.llmAvailable) setEngineMode("live");
+      })
+      .catch(() => {});
+  }, []);
+
+  const applyLoopResult = useCallback((result: TournamentState, mode?: TournamentMode) => {
+    setState(result);
+    if (mode) setEngineMode(mode);
     nextRunRef.current = Date.now() + getLoopIntervalMs();
   }, []);
+
+  const runStepViaApi = useCallback(async (step: LoopStep): Promise<boolean> => {
+    const res = await fetch("/api/tournament/run", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ state: stateRef.current, step }),
+    });
+
+    if (!res.ok) return false;
+
+    const data = (await res.json()) as TournamentState & {
+      mode?: TournamentMode;
+      savedRoundId?: string | null;
+      persistError?: string | null;
+    };
+    const nextState: TournamentState = {
+      tournament: data.tournament,
+      leaderboard: data.leaderboard,
+      history: data.history,
+      marketplace: data.marketplace,
+    };
+    applyLoopResult(nextState, data.mode);
+
+    if (shouldAutoSaveTournament(nextState)) {
+      const mode = data.mode ?? "mock";
+      const record = buildSavedTournamentRecord(
+        nextState,
+        mode,
+        data.savedRoundId ?? undefined,
+      );
+      upsertLocalTournamentRound(record);
+
+      if (data.savedRoundId) {
+        setPersistMessage(`Round ${record.round} auto-saved to Supabase`);
+      } else if (data.persistError) {
+        setPersistMessage(`Supabase save failed: ${data.persistError}`);
+      } else if (!engineStatus.supabaseCanSave) {
+        setPersistMessage(`Round ${record.round} saved locally (Supabase not ready)`);
+      } else {
+        setPersistMessage(`Round ${record.round} saved locally`);
+      }
+    }
+    return true;
+  }, [applyLoopResult]);
 
   const runStep = useCallback(
     async (step: LoopStep) => {
       setBusy(true);
-      await new Promise((r) => setTimeout(r, 400));
-      applyLoop(step);
-      setBusy(false);
+      try {
+        const ok = await runStepViaApi(step);
+        if (!ok) {
+          setState((prev) => {
+            const next = runTournamentLoop(prev, step);
+            if (shouldAutoSaveTournament(next)) {
+              const record = buildSavedTournamentRecord(next, "mock");
+              upsertLocalTournamentRound(record);
+              setPersistMessage(`Round ${record.round} saved locally (offline mock)`);
+            }
+            return next;
+          });
+          setEngineMode("mock");
+          nextRunRef.current = Date.now() + getLoopIntervalMs();
+        }
+      } catch {
+        setState((prev) => {
+          const next = runTournamentLoop(prev, step);
+          if (shouldAutoSaveTournament(next)) {
+            const record = buildSavedTournamentRecord(next, "mock");
+            upsertLocalTournamentRound(record);
+            setPersistMessage(`Round ${record.round} saved locally (offline mock)`);
+          }
+          return next;
+        });
+        setEngineMode("mock");
+        nextRunRef.current = Date.now() + getLoopIntervalMs();
+      } finally {
+        setBusy(false);
+      }
     },
-    [applyLoop],
+    [runStepViaApi],
   );
 
   const appendEvent = useCallback((ev: TournamentEvent) => {
@@ -57,17 +166,16 @@ export function TournamentView() {
     nextRunRef.current = nextRunRef.current ?? Date.now() + getLoopIntervalMs();
 
     const tick = setInterval(() => {
-      if (nextRunRef.current === null) return;
+      if (nextRunRef.current === null || busy) return;
       const remaining = Math.max(0, Math.ceil((nextRunRef.current - Date.now()) / 1000));
       setCountdownSec(remaining);
       if (remaining === 0) {
-        applyLoop("full");
-        nextRunRef.current = Date.now() + getLoopIntervalMs();
+        void runStep("full");
       }
     }, 1000);
 
     return () => clearInterval(tick);
-  }, [state.tournament.paused, applyLoop]);
+  }, [state.tournament.paused, busy, runStep]);
 
   const selectedIdeaId =
     state.tournament.challengeIdeas.length > 0
@@ -92,9 +200,17 @@ export function TournamentView() {
             <h1 className="mt-2 text-3xl font-semibold sm:text-4xl">Tournament Engine</h1>
             <p className="mt-2 max-w-2xl text-sm text-zinc-400">
               AI agents generate challenges, compete, get judged, update the leaderboard, and seed
-              the future marketplace — mock loop every 5 minutes.
+              the marketplace — {engineMode === "live" ? "live LLM" : "mock"} loop every 5 minutes.
+              Completed rounds auto-save.
             </p>
           </div>
+          <Link
+            href="/tournaments"
+            className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-zinc-300 hover:bg-white/10"
+          >
+            <History className="size-4 text-violet-400" />
+            Saved rounds
+          </Link>
         </header>
 
         <div className="space-y-6">
@@ -102,6 +218,11 @@ export function TournamentView() {
             tournament={state.tournament}
             countdownSec={countdownSec}
             persistMessage={persistMessage}
+            engineMode={engineMode}
+            supabaseConfigured={engineStatus.supabaseConfigured}
+            supabaseTableReady={engineStatus.supabaseTableReady}
+            supabaseHint={engineStatus.supabaseHint}
+            persistIsError={persistMessage?.startsWith("Supabase save failed") ?? false}
           />
 
           <AdminControls
@@ -140,19 +261,34 @@ export function TournamentView() {
             onGenerateOnly={() => runStep("generate")}
             onRunAgentsOnly={() => runStep("run")}
             onEvaluateOnly={() => runStep("evaluate")}
-            onSaveMock={async () => {
+            onSave={async () => {
               setBusy(true);
-              const result = await saveTournamentStateMock(state);
-              setPersistMessage(result.message);
-              appendEvent({
-                id: crypto.randomUUID(),
-                tournamentId: state.tournament.id,
-                round: state.tournament.round,
-                type: "supabase_save_mock",
-                message: result.message,
-                timestamp: result.savedAt,
-              });
-              setBusy(false);
+              try {
+                const res = await fetch("/api/tournament/save", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ state: stateRef.current, mode: engineMode }),
+                });
+                const result = (await res.json()) as {
+                  ok: boolean;
+                  message: string;
+                  savedAt: string;
+                };
+                setPersistMessage(result.ok ? result.message : `Supabase save failed: ${result.message}`);
+                appendEvent({
+                  id: crypto.randomUUID(),
+                  tournamentId: state.tournament.id,
+                  round: state.tournament.round,
+                  type: "supabase_save",
+                  message: result.message,
+                  timestamp: result.savedAt,
+                });
+              } catch (err) {
+                const message = err instanceof Error ? err.message : "Save failed";
+                setPersistMessage(message);
+              } finally {
+                setBusy(false);
+              }
             }}
           />
 

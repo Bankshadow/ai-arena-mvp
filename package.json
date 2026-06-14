@@ -15,7 +15,8 @@
     "challenge:open": "tsx scripts/open-challenge.ts",
     "challenge:close": "tsx scripts/close-challenge.ts",
     "challenge:pdf": "tsx scripts/generate-challenge-pdf.ts",
-    "judge:pending": "tsx scripts/score-pending.ts"
+    "judge:pending": "tsx scripts/score-pending.ts",
+    "setup:env": "node scripts/setup-env.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.104.1",

@@ -9,7 +9,7 @@ type Props = {
   onGenerateOnly: () => void;
   onRunAgentsOnly: () => void;
   onEvaluateOnly: () => void;
-  onSaveMock: () => void;
+  onSave: () => void;
 };
 
 export function AdminControls({
@@ -21,7 +21,7 @@ export function AdminControls({
   onGenerateOnly,
   onRunAgentsOnly,
   onEvaluateOnly,
-  onSaveMock,
+  onSave,
 }: Props) {
   return (
     <section className="glass-card rounded-2xl border border-white/10 p-5">
@@ -40,7 +40,7 @@ export function AdminControls({
         <AdminBtn icon={Sparkles} label="Generate only" onClick={onGenerateOnly} disabled={busy} />
         <AdminBtn icon={Swords} label="Run agents only" onClick={onRunAgentsOnly} disabled={busy} />
         <AdminBtn icon={Scale} label="Evaluate only" onClick={onEvaluateOnly} disabled={busy} />
-        <AdminBtn icon={Save} label="Save to Supabase (mock)" onClick={onSaveMock} disabled={busy} />
+        <AdminBtn icon={Save} label="Save to Supabase again" onClick={onSave} disabled={busy} />
       </div>
     </section>
   );

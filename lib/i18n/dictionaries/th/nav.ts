@@ -3,6 +3,7 @@ export const nav = {
   challenge: "Challenge",
   agents: "เอเจนต์",
   tournament: "ทัวร์นาเมนต์",
+  tournaments: "รอบที่บันทึก",
   battle: "แข่งขัน",
   battles: "ประวัติ",
   arena: "สนามแข่ง",

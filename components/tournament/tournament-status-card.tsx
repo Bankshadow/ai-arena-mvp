@@ -1,4 +1,5 @@
 import type { Tournament, TournamentPhase } from "@/lib/tournament/types";
+import type { TournamentMode } from "@/lib/tournament/engine";
 import { getLoopIntervalMs } from "@/lib/tournament/engine";
 
 const PHASE_LABELS: Record<TournamentPhase, string> = {
@@ -16,9 +17,23 @@ type Props = {
   tournament: Tournament;
   countdownSec: number | null;
   persistMessage: string | null;
+  engineMode: TournamentMode;
+  supabaseConfigured: boolean;
+  supabaseTableReady: boolean;
+  supabaseHint: string | null;
+  persistIsError?: boolean;
 };
 
-export function TournamentStatusCard({ tournament, countdownSec, persistMessage }: Props) {
+export function TournamentStatusCard({
+  tournament,
+  countdownSec,
+  persistMessage,
+  engineMode,
+  supabaseConfigured,
+  supabaseTableReady,
+  supabaseHint,
+  persistIsError,
+}: Props) {
   const phaseLabel = PHASE_LABELS[tournament.phase];
   const intervalMin = getLoopIntervalMs() / 60000;
 
@@ -44,8 +59,30 @@ export function TournamentStatusCard({ tournament, countdownSec, persistMessage 
             >
               {tournament.paused ? "Paused" : "Auto loop active"}
             </span>
-            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-zinc-400">
-              Mock mode
+            <span
+              className={`rounded-full border px-3 py-1 text-xs font-medium ${
+                engineMode === "live"
+                  ? "border-cyan-500/40 bg-cyan-500/10 text-cyan-200"
+                  : "border-white/10 bg-white/5 text-zinc-400"
+              }`}
+            >
+              {engineMode === "live" ? "Live LLM" : "Mock mode"}
+            </span>
+            <span
+              className={`rounded-full border px-3 py-1 text-xs ${
+                supabaseConfigured && supabaseTableReady
+                  ? "border-emerald-500/30 bg-emerald-500/5 text-emerald-300/80"
+                  : supabaseConfigured
+                    ? "border-amber-500/40 bg-amber-500/10 text-amber-200"
+                    : "border-zinc-700 bg-zinc-900/50 text-zinc-500"
+              }`}
+            >
+              Supabase{" "}
+              {!supabaseConfigured
+                ? "off"
+                : supabaseTableReady
+                  ? "ready"
+                  : "table missing"}
             </span>
           </div>
         </div>
@@ -68,8 +105,20 @@ export function TournamentStatusCard({ tournament, countdownSec, persistMessage 
         <Stat label="Active runs" value={String(tournament.activeRuns.length)} />
       </div>
 
+      {supabaseConfigured && !supabaseTableReady && supabaseHint && (
+        <p className="border-t border-amber-500/20 bg-amber-500/5 px-5 py-3 text-xs text-amber-200">
+          {supabaseHint}
+        </p>
+      )}
+
       {persistMessage && (
-        <p className="border-t border-white/10 px-5 py-3 text-xs text-cyan-300">{persistMessage}</p>
+        <p
+          className={`border-t border-white/10 px-5 py-3 text-xs ${
+            persistIsError ? "text-rose-300" : "text-cyan-300"
+          }`}
+        >
+          {persistMessage}
+        </p>
       )}
     </section>
   );

@@ -13,6 +13,7 @@ const LINKS = [
   { href: "/challenge/executive-summary-battle", key: "challenge" as const },
   { href: "/agents", key: "agents" as const },
   { href: "/tournament", key: "tournament" as const },
+  { href: "/tournaments", key: "tournaments" as const },
   { href: "/battle", key: "battle" as const },
   { href: "/battles", key: "battles" as const },
   { href: "/arena", key: "arena" as const },

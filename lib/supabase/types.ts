@@ -46,3 +46,15 @@ export type BattleRow = {
   payload: Record<string, unknown>;
   created_at: string;
 };
+
+export type TournamentRoundRow = {
+  id: string;
+  tournament_id: string;
+  round: number;
+  mode: string;
+  phase: string;
+  winner_agent_id: string | null;
+  winner_score: number | null;
+  payload: Record<string, unknown>;
+  created_at: string;
+};

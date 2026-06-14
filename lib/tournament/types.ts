@@ -155,7 +155,8 @@ export type TournamentEventType =
   | "paused"
   | "resumed"
   | "manual_run"
-  | "supabase_save_mock";
+  | "supabase_save_mock"
+  | "supabase_save";
 
 export type TournamentEvent = {
   id: string;
