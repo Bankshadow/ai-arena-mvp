@@ -1,0 +1,63 @@
+---
+description: Supabase SQL migrations — source of truth and sync workflow
+globs: supabase/**/*
+alwaysApply: false
+---
+
+# Supabase migrations (AI ARENA)
+
+## Source of truth
+
+- **Edit only** `supabase/migrations/*.sql` for schema/RLS changes.
+- **Do not** edit legacy files `schema.sql`, `rls-v2.sql`, `tournament_rounds.sql`, `marketplace_listings.sql` — they are snapshots for reference.
+- **Never** modify a migration that may already be applied on remote. Add a **new** migration file instead.
+
+## New migration
+
+```bash
+npm run supabase:new -- short_description
+```
+
+Naming: `YYYYMMDDHHMMSS_short_description.sql` (UTC-ish timestamp prefix).
+
+## Apply to remote Supabase
+
+```bash
+npm run supabase:push
+```
+
+First-time setup (once per machine):
+
+```bash
+npm run supabase:login
+npm run supabase:link    # uses NEXT_PUBLIC_SUPABASE_URL / SUPABASE_PROJECT_REF
+npm run supabase:push
+```
+
+Requires `SUPABASE_DB_PASSWORD` in `.env.local` for non-interactive link, or enter password when prompted.
+
+## After changing SQL
+
+1. Add migration file under `supabase/migrations/`
+2. Run `npm run supabase:push`
+3. Update `lib/supabase/types.ts` if columns/tables changed
+4. Run `npm run build`
+
+## Idempotent patterns
+
+Prefer safe re-runs for dev projects that ran manual SQL before:
+
+- `create table if not exists`
+- `drop policy if exists` before `create policy`
+- `create index if not exists`
+
+## Tables in this project
+
+| Table | Purpose |
+|-------|---------|
+| `submissions` | Human workflow submissions |
+| `battles` | Token efficiency battle history |
+| `tournament_rounds` | Tournament snapshots |
+| `marketplace_listings` | Tournament → marketplace seeds |
+
+Admin mutations use `SUPABASE_SERVICE_ROLE_KEY`, not public RLS update policies.

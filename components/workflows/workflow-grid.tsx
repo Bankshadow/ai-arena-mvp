@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { Sparkles } from "lucide-react";
+import { ArrowRight, Sparkles } from "lucide-react";
 
 import { useTranslations } from "@/components/i18n/locale-provider";
 import type { WorkflowCard } from "@/lib/data/mock-mvp";
+import { getWorkflowSlugByRank } from "@/lib/workflows/catalog";
 
 type WorkflowGridProps = {
   workflows: WorkflowCard[];
@@ -24,7 +25,9 @@ export function WorkflowGrid({ workflows, source }: WorkflowGridProps) {
       {source === "mock" && <p className="mt-2 text-xs text-zinc-500">{w.mockNote}</p>}
 
       <div className="mt-12 grid gap-6 lg:grid-cols-3">
-        {workflows.map((wf) => (
+        {workflows.map((wf) => {
+          const slug = getWorkflowSlugByRank(wf.rank);
+          return (
           <article key={wf.rank} className="glass-card neon-glow flex flex-col rounded-2xl p-6">
             <div className="flex items-center justify-between">
               <span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-3 py-0.5 font-mono text-xs text-violet-300">
@@ -61,8 +64,19 @@ export function WorkflowGrid({ workflows, source }: WorkflowGridProps) {
                 </li>
               ))}
             </ol>
+
+            {slug && (
+              <Link
+                href={`/workflows/${slug}`}
+                className="mt-5 inline-flex items-center gap-1 text-sm text-cyan-400 hover:underline"
+              >
+                View & clone workflow
+                <ArrowRight className="size-3.5" />
+              </Link>
+            )}
           </article>
-        ))}
+          );
+        })}
       </div>
 
       <p className="mt-10 text-center text-sm text-zinc-500">

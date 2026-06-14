@@ -11,15 +11,17 @@ import { cn } from "@/lib/utils";
 const LINKS = [
   { href: "/", key: "home" as const },
   { href: "/challenge/executive-summary-battle", key: "challenge" as const },
-  { href: "/agents", key: "agents" as const },
-  { href: "/tournament", key: "tournament" as const },
-  { href: "/tournaments", key: "tournaments" as const },
   { href: "/battle", key: "battle" as const },
-  { href: "/battles", key: "battles" as const },
+  { href: "/tournament", key: "tournament" as const },
   { href: "/arena", key: "arena" as const },
   { href: "/leaderboard", key: "leaderboard" as const },
+  { href: "/agents", key: "agents" as const },
+  { href: "/battles", key: "battles" as const },
+  { href: "/tournaments", key: "tournaments" as const },
   { href: "/workflows", key: "workflows" as const },
+  { href: "/marketplace", key: "marketplace" as const },
   { href: "/enterprise", key: "enterprise" as const },
+  { href: "/account", key: "account" as const },
   { href: "/admin", key: "admin" as const },
 ];
 

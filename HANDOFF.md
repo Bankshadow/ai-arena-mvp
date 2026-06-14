@@ -1,185 +1,223 @@
 # AI ARENA — Handoff Log
-Date: 2026-06-14 | Prepared for Cursor | Last updated: 2026-06-14 (post-audit fixes)
+
+Date: 2026-06-14 | Prepared for Cursor / Claude | **Last updated: 2026-06-14 (Phase A–D complete + Supabase CLI + E2E)**
+
+Production: **https://ai-arena-drab.vercel.app** · Dev: **http://localhost:3005** · Repo: `Bankshadow/ai-arena-mvp`
 
 ---
 
 ## Project Overview
 
-**AI ARENA** — AI workflow efficiency competition platform.
-Core concept: AI Agent personas compete first to seed the leaderboard (solve cold-start), then human users join and compete against them.
+**AI ARENA** — AI workflow efficiency competition platform.  
+AI Agent personas seed the leaderboard; humans compete via Arena, Submit, Battle, and Tournament. Tournament winners feed a workflow marketplace.
 
-Stack: Next.js 16.2.6 (Turbopack), React 19, TypeScript, Supabase, Drizzle ORM, Tailwind CSS, `@anthropic-ai/sdk`
+**Stack:** Next.js 16.2.6 (Turbopack), React 19, TypeScript, Supabase, Tailwind CSS, `@anthropic-ai/sdk`, Supabase CLI migrations
 
----
-
-## MVP Status
-
-| MVP | Feature | Status |
-|-----|---------|--------|
-| MVP1 | 10 AI Agent personas + simulated leaderboard | ✅ Done |
-| MVP2 | Challenge page + submission form → Supabase | ✅ Done |
-| MVP3 | Human vs AI arena (AI Judge scoring) | ✅ Done |
-| MVP4 | Enterprise private benchmark | ✅ Done |
-| MVP5 | Real LLM API runner + AI Judge | ✅ Done |
-| i18n | EN/TH locale switcher + dictionaries | ✅ Done |
+**Mock mode:** No `ANTHROPIC_API_KEY` → Battle/Tournament/Arena judge use heuristics; Supabase persistence still works.
 
 ---
 
-## Audit Log — Resolved (2026-06-14)
+## MVP Status (full roadmap)
 
-| # | Issue | Fix |
-|---|-------|-----|
-| 1 | Dead code — `components/leaderboard/leaderboard-table.tsx` never imported | ✅ Deleted; active component is `components/LeaderboardTable.tsx` |
-| 2 | Arena (MVP3) used heuristic judge, not AI Judge | ✅ Added `POST /api/judge-output`; `arena-view.tsx` calls it before `rankHuman()` |
-
----
-
-## What Was Built (MVP5 + post-audit)
-
-### Files Created
-- `lib/runner/prompt-builder.ts` — Per-agent prompt strategies for all 10 personas. Each persona has a distinct system prompt + multi-step workflow (e.g. laureate: draft→critique→rewrite, redliner: 2-round adversarial review, hivemind: 3 specialist analysts)
-- `lib/runner/run-agent.ts` — Calls real Anthropic API. Model mapping: frugal/spartan → `claude-haiku-4-5`, sprinter/hivemind/scholar/redliner/sentinel → `claude-sonnet-4-6`, laureate/architect/atlas → `claude-opus-4-8`. Captures real tokensIn/tokensOut/costUsd/latencyMs.
-- `lib/judge/rubric-judge.ts` — AI Judge using `claude-sonnet-4-6`. Scores 5 rubric dimensions: accuracy(0-25), completeness(0-20), structure(0-15), riskId(0-10), recommendation(0-10). Also returns hallucinationPenalty and formatPenalty. Falls back to heuristic keyword judge when no API key.
-- `app/api/run-agent/route.ts` — `POST /api/run-agent` body: `{agentId, challengeSlug}`. Orchestrates: run → judge → scoreField() → returns `{run, score, fullOutput}`.
-- `app/api/judge-output/route.ts` — `POST /api/judge-output` body: `{output}`. Runs `judgeOutput()` and returns rubric scores. Used by Arena (MVP3). Works without API key (heuristic fallback).
-
-### Files Modified
-- `lib/env.ts` — Added `hasAnthropicKey()`
-- `.env.example` — Added `ANTHROPIC_API_KEY="sk-ant-..."`
-- `components/admin/admin-review-panel.tsx` — Added "Run Real Agent" panel (violet section at top of admin page). Persona picker + real-time results display.
-- `components/arena/arena-view.tsx` — Submits to `/api/judge-output`, passes rubric into `rankHuman()`; loading + error states.
-- `lib/agents/human.ts` — `rankHuman()` accepts optional `JudgeResult` from AI Judge; heuristic fallback when omitted (Enterprise demo still uses this).
-- `package.json` — `@anthropic-ai/sdk` installed
-
-### Files Deleted
-- `components/leaderboard/leaderboard-table.tsx` — unused duplicate of `LeaderboardTable.tsx`
-
-### Env Required
-Add to `.env.local`:
-```
-ANTHROPIC_API_KEY=sk-ant-...
-```
+| Phase | MVP | Feature | Status |
+|-------|-----|---------|--------|
+| Core | MVP1–5 | Agents, Submit, Arena, Enterprise, LLM runner | ✅ Done |
+| Core | i18n | EN/TH locale switcher | ✅ Done |
+| Core | MVP6–9 | Battle (generate → run → history) | ✅ Done |
+| Core | Tournament | Mock/LLM loop, Supabase save, `/tournaments` | ✅ Done |
+| **A** | MVP10 | `/api/health`, `npm run smoke` / `smoke:prod` | ✅ Done |
+| **A** | MVP11 | Basic Auth on `/admin` + `/api/admin/*` | ✅ Done |
+| **A** | MVP12 | RLS v2 — no public UPDATE on submissions | ✅ Done |
+| **B** | MVP13 | Unified leaderboard (humans + agents + battles + tournaments) | ✅ Done |
+| **B** | MVP14 | `/api/run-agent` persists to Supabase | ✅ Done |
+| **B** | MVP15 | Nav + landing hero paths refreshed | ✅ Done |
+| **C** | MVP16 | Enterprise AI Judge (`/api/judge-output`) | ✅ Done |
+| **C** | MVP17 | Arena → sessionStorage bridge → Submit/Battle/Enterprise | ✅ Done |
+| **C** | MVP18 | `/account` + email cookie + history API | ✅ Done |
+| **D** | MVP19 | Marketplace table + UI + tournament sync | ✅ Done |
+| **D** | MVP20–21 | `/workflows/[slug]` clone prompt + export bundle | ✅ Done |
+| Infra | Supabase CLI | `supabase/migrations/` + `npm run supabase:push` | ✅ Done |
+| Infra | E2E | `npm run e2e` — 19/19 checks (local) | ✅ Done |
+| **E** | MVP22–24 | Cost guardrails, provider abstraction, live toggle | ⏳ Not started |
 
 ---
 
-## Architecture
+## Environment (`.env.local`)
+
+| Variable | Required | Purpose |
+|----------|----------|---------|
+| `NEXT_PUBLIC_SUPABASE_URL` | Yes | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Public key (submit form, reads) |
+| `SUPABASE_SERVICE_ROLE_KEY` | **Yes for admin + account history** | Bypass RLS server-side |
+| `SUPABASE_DB_PASSWORD` | For `supabase:push` | CLI migration sync |
+| `SUPABASE_PROJECT_REF` | Optional | Parsed from URL if omitted |
+| `ADMIN_USERNAME` / `ADMIN_PASSWORD` | For `/admin` | HTTP Basic Auth |
+| `ANTHROPIC_API_KEY` | Optional | Live LLM; omit = mock mode |
+
+Template: `env.import.example` → copy to `.env.local`  
+Vercel: `vercel.env.example` → import in dashboard, then redeploy.
+
+**Get service role key:** Supabase Dashboard → Project Settings → API → `service_role` (secret). Never expose to client.
+
+---
+
+## Database sync (no manual SQL Editor)
+
+```bash
+npm run supabase:push      # apply supabase/migrations/* to remote
+npm run supabase:new -- x  # scaffold new migration
+npm run supabase:status    # migration list
+```
+
+Migrations applied (2026-06-14):
+
+| File | Contents |
+|------|----------|
+| `20250101000000_submissions_and_battles.sql` | Core tables |
+| `20250102000000_tournament_rounds.sql` | Tournament snapshots |
+| `20250103000000_marketplace_listings.sql` | Marketplace |
+| `20250104000000_rls_v2_submissions.sql` | Tighter RLS |
+
+Legacy snapshots (`schema.sql`, `rls-v2.sql`, …) are reference only. See `supabase/README.md`.
+
+Cursor rule: `.cursor/rules/supabase-migrations.mdc`
+
+---
+
+## Test commands
+
+```bash
+npm run dev          # :3005
+npm run build
+npm run smoke        # local health + pages
+npm run smoke:prod   # production URL
+npm run e2e          # 19 flow checks (needs dev server + env)
+```
+
+**E2E flows verified:** Arena judge → pages · Submit (anon) → account history (service role) · Tournament → marketplace · Workflows clone UI.
+
+**Browser-only:** Arena sessionStorage bridge (Arena → prefill Submit/Enterprise).
+
+---
+
+## Architecture (current)
 
 ```
-Challenge input (BOARD_REPORT in prompt-builder.ts)
-        ↓
-lib/runner/run-agent.ts  ← calls Anthropic API with per-persona prompt
-        ↓
-lib/judge/rubric-judge.ts  ← claude-sonnet-4-6 judges the output
-        ↓
-lib/agents/scoring.ts::scoreField()  ← pure scoring pipeline (shared with mock)
-        ↓
-app/api/run-agent/route.ts  ← returns {run, score, fullOutput}
-        ↓
-components/admin/admin-review-panel.tsx  ← displays result
-
-Arena (MVP3) path:
-  user output → POST /api/judge-output → rankHuman(judged) → leaderboard UI
+Submit form ──anon──► Supabase submissions (pending)
+Admin panel ──service role──► approve/reject (/api/admin/*)
+Account history ──service role──► all statuses by email (/api/account/history)
+Arena / Enterprise ──► POST /api/judge-output ──► rankHuman()
+Tournament loop ──► POST /api/tournament/run ──► save round + upsert marketplace
+Unified leaderboard ──► lib/leaderboard/unified.ts
 ```
 
-### Scoring Formula
+### Scoring (unchanged)
+
 ```
 FINAL = 0.55·qualityAdj + 0.20·costEff + 0.10·tokenEff + 0.10·speedEff + 0.05·robustness
 qualityAdj = qualityRaw − hallucinationPenalty − formatPenalty
-qualityRaw = accuracy + completeness + structure + riskId + recommendation  (max 80)
 ```
 
-### Model Pricing (used in run-agent.ts)
-- `claude-haiku-4-5`: $0.000001/in $0.000005/out
-- `claude-sonnet-4-6`: $0.000003/in $0.000015/out
-- `claude-opus-4-8`: $0.000005/in $0.000025/out
+---
+
+## Routes (app)
+
+| Route | Purpose |
+|-------|---------|
+| `/` | Landing |
+| `/challenge/executive-summary-battle` | Challenge #1 |
+| `/submit` | Human submission (Supabase) |
+| `/arena` | Human vs AI (AI Judge) |
+| `/battle` | Token efficiency battle |
+| `/battles`, `/battles/[id]` | Battle history |
+| `/tournament` | Autonomous tournament loop |
+| `/tournaments`, `/tournaments/[id]` | Saved rounds |
+| `/leaderboard` | Unified rankings |
+| `/agents`, `/agents/[id]`, `/agents/report` | Agent roster + report |
+| `/workflows`, `/workflows/[slug]` | Workflow library + clone/export |
+| `/marketplace`, `/marketplace/[slug]` | Tournament → listings |
+| `/enterprise` | Private benchmark (AI Judge) |
+| `/account` | Email-based activity history |
+| `/admin` | Review + real agent runner (Basic Auth) |
+
+### API highlights
+
+| Endpoint | Notes |
+|----------|-------|
+| `GET /api/health` | Supabase + table readiness |
+| `POST /api/judge-output` | Arena + Enterprise scoring |
+| `POST /api/run-agent` | Live agent + optional Supabase persist |
+| `POST /api/tournament/run` | Loop step + auto-save + marketplace upsert |
+| `GET /api/account/history?email=` | Submissions/battles/tournaments by email |
+| `GET /api/marketplace` | Listings from Supabase |
+| `/api/admin/*` | Basic Auth + service role |
 
 ---
 
-## Known Issues (Open)
-
-_None from the audit log — see Next Steps for remaining work._
-
----
-
-## Key File Map
+## Key files (new since MVP5)
 
 ```
 lib/
-  agents/
-    types.ts          — AgentPersona, AgentRun, AgentScore, LeaderboardEntry, RubricScores
-    personas.ts       — 10 agent personas (frugal, laureate, sprinter, hivemind, scholar, spartan, architect, redliner, sentinel, atlas)
-    simulate.ts       — Deterministic mock data + getAgentRuns() / getAgentLeaderboard()
-    scoring.ts        — scoreField() pure function — shared by agents + humans
-    human.ts          — rankHuman() injects human run into agent field and re-scores (optional AI Judge rubric)
-  runner/
-    prompt-builder.ts — buildPrompt(agentId) → {systemPrompt, userPrompt}; BOARD_REPORT const
-    run-agent.ts      — runAgent(agentId, challengeSlug) → {run, fullOutput}
-  judge/
-    rubric-judge.ts   — judgeOutput(text) → JudgeResult (rubric + penalties)
-    score-submission.ts — legacy OpenAI judge (not used by new flow)
-  data/
-    challenges.ts     — EXECUTIVE_SUMMARY_BATTLE challenge definition
-  supabase/
-    index.ts          — createBrowserSupabase(), isSupabaseConfigured()
-    scoring.ts        — computeCostScore(), computeFinalScore()
-    types.ts          — SubmissionRow, SubmissionStatus
-  env.ts              — hasDatabaseUrl(), hasOpenAiKey(), hasAnthropicKey()
-  constants.ts        — DEFAULT_CHALLENGE_SLUG
-  i18n/               — EN/TH dictionaries, locale provider, server helpers
-
-app/
-  page.tsx                          — Landing page
-  agents/page.tsx                   — Agent roster
-  agents/[id]/page.tsx              — Agent detail (params is Promise<{id}> — must await)
-  arena/page.tsx                    — Human vs AI arena (MVP3)
-  challenge/[slug]/page.tsx         — Challenge detail
-  leaderboard/page.tsx              — Live leaderboard (Supabase + fallback mock)
-  workflows/page.tsx                — Workflow showcase
-  enterprise/page.tsx               — Private benchmark (MVP4)
-  admin/page.tsx                    — Admin review panel + Real Agent runner
-  submit/page.tsx                   — Submission form
-  api/run-agent/route.ts            — POST: run real agent + judge
-  api/judge-output/route.ts         — POST: judge human output (Arena)
-
-components/
-  Nav.tsx                           — Navigation (8 links, i18n)
-  LeaderboardTable.tsx              — Active leaderboard table component
-  admin/admin-review-panel.tsx      — Admin UI (submission review + real agent runner)
-  arena/arena-view.tsx              — MVP3 human vs AI comparison (AI Judge)
-  challenge/challenge-detail.tsx    — Challenge page UI
-  enterprise/enterprise-view.tsx    — MVP4 private benchmark UI
-  landing/landing-page.tsx          — Landing page
-  leaderboard/leaderboard-view.tsx  — Leaderboard page logic
-  submit/mvp-submit-form.tsx        — Submission form (posts to Supabase directly)
-  workflows/workflow-grid.tsx       — Workflow cards
-  workflows/workflows-page-shell.tsx — Workflow page shell
-  i18n/
-    locale-provider.tsx             — useTranslations() hook
-    language-switcher.tsx           — EN/TH switcher
-
-lib/i18n/dictionaries/
-  en/   — English strings (nav.ts, pages.ts, landing.ts)
-  th/   — Thai strings (nav.ts, pages.ts, landing.ts)
+  admin/auth.ts              — Basic Auth helpers
+  auth/user-cookie.ts        — Email cookie for /account
+  bridge/arena-output.ts       — sessionStorage bridge (MVP17)
+  enterprise/benchmark.ts    — Enterprise judge wrapper
+  leaderboard/unified.ts     — Merged leaderboard sources
+  supabase/admin-client.ts   — Service role client
+  supabase/agent-runs.ts     — Persist /api/run-agent
+  supabase/marketplace.ts    — Marketplace CRUD
+  workflows/catalog.ts       — Workflow slugs + export bundles
+middleware.ts                — Protect /admin routes
+scripts/
+  smoke-test.mjs             — Deploy smoke
+  e2e-flow-test.ts           — Full flow E2E
+  supabase-push.mjs          — Migration sync
+supabase/migrations/         — Source of truth for schema
+.cursor/rules/supabase-migrations.mdc
 ```
 
 ---
 
-## Next Steps (Suggested)
+## Known issues / notes
 
-1. **Persist real agent runs** — Save results from `/api/run-agent` to Supabase `submissions` table so real runs appear on the public leaderboard
-2. **Enterprise AI Judge** — Wire `/api/judge-output` into `enterprise-view.tsx` when users paste real output (currently uses heuristic via quality slider)
-3. **Workflows content** — The workflows page shows mock data; populate with real workflow case studies
-4. **Auth** — Add Supabase Auth so users have persistent submission history
+| Item | Detail |
+|------|--------|
+| Vercel env | Production needs Supabase URL/keys + `SUPABASE_SERVICE_ROLE_KEY` + `ADMIN_*` |
+| Arena bridge | sessionStorage — manual browser test only |
+| Marketplace listings | Grow on each tournament save (no dedup yet) |
+| i18n | Tournament/battle/marketplace pages mostly EN labels in UI |
+| Legacy Drizzle | `db/*` + `docs/DATABASE.md` Drizzle section — optional, not MVP path |
 
 ---
 
-## Next.js 16 Breaking Change (Critical)
+## Next steps (Phase E — suggested)
 
-Dynamic route params are a `Promise` and must be awaited:
+1. **MVP22** — Cost guardrails (max rounds/day, budget cap)
+2. **MVP23** — Provider abstraction (Anthropic + Ollama fallback)
+3. **MVP24** — Admin live/mock toggle without redeploy
+4. Marketplace dedup + review workflow (`seed` → `review` → `listed`)
+5. i18n for new pages (account, marketplace, tournament)
+6. Playwright browser E2E for sessionStorage bridge
+
+---
+
+## Next.js 16 (critical)
+
+Dynamic route `params` is a **Promise** — always `await params`:
+
 ```typescript
-// app/agents/[id]/page.tsx
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;  // ← must await
+  const { id } = await params;
 }
 ```
-Do NOT write `params.id` directly — it will be undefined in production.
+
+---
+
+## Git / deploy log
+
+| Date | Commit | Notes |
+|------|--------|-------|
+| 2026-06-14 | `a0f172b` | Tournament Supabase + LLM mock-first |
+| 2026-06-14 | _(this commit)_ | Phase A–D, migrations CLI, E2E, marketplace, account |
+
+After push: confirm Vercel redeploy + run `npm run smoke:prod`.

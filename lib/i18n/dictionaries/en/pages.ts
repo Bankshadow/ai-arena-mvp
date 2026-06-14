@@ -47,9 +47,13 @@ export const submit = {
 export const leaderboard = {
   eyebrow: "Rankings",
   title: "Leaderboard",
+  subtitleUnified:
+    "Humans · AI agents · battles · tournament — ranked by composite score",
   subtitleSupabase: "Approved submissions · Final Score = Quality × 0.8 + Cost Score × 0.2",
   subtitleMock: "Demo data — configure Supabase for live rankings",
   subtitleEmpty: "Final Score = Quality × 0.8 + Cost Score × 0.2",
+  sourcesLabel: "Sources",
+  enterArena: "Enter Arena",
   empty: "No reviewed submissions yet.",
   emptyFallback: "No entries yet. Submit your solution to appear on the board.",
   submitSolution: "Submit solution",
@@ -59,7 +63,8 @@ export const admin = {
   eyebrow: "Admin",
   title: "Submission review",
   subtitle: "Challenge #1 — manual quality review and scoring",
-  warning: "Admin panel is unprotected in MVP mode. Do not share this URL publicly.",
+  warning: "Protected by HTTP Basic Auth when ADMIN_USERNAME and ADMIN_PASSWORD are set.",
+  serviceRoleMissing: "Add SUPABASE_SERVICE_ROLE_KEY to enable approve/reject actions.",
   notConfigured: "Configure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.local.",
   supabaseError: "Supabase is not configured.",
   qualityError: "Quality score must be between 0 and 100.",

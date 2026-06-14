@@ -44,9 +44,13 @@ export const submit = {
 export const leaderboard = {
   eyebrow: "อันดับ",
   title: "Leaderboard",
+  subtitleUnified:
+    "มนุษย์ · AI agents · battles · tournament — เรียงตามคะแนนรวม",
   subtitleSupabase: "ผลงานที่อนุมัติแล้ว · คะแนนรวม = คุณภาพ × 0.8 + คะแนนต้นทุน × 0.2",
   subtitleMock: "ข้อมูล demo — ตั้งค่า Supabase เพื่อดูอันดับจริง",
   subtitleEmpty: "คะแนนรวม = คุณภาพ × 0.8 + คะแนนต้นทุน × 0.2",
+  sourcesLabel: "แหล่งข้อมูล",
+  enterArena: "เข้าสนาม Arena",
   empty: "ยังไม่มีผลงานที่ตรวจแล้ว",
   emptyFallback: "ยังไม่มีรายการ ส่งผลงานเพื่อปรากฏบนบอร์ด",
   submitSolution: "ส่งผลงาน",
@@ -56,7 +60,8 @@ export const admin = {
   eyebrow: "แอดมิน",
   title: "ตรวจสอบผลงาน",
   subtitle: "Challenge #1 — ให้คะแนนคุณภาพด้วยตนเอง",
-  warning: "แผงแอดมินยังไม่มีการป้องกันในโหมด MVP อย่าแชร์ URL นี้สาธารณะ",
+  warning: "ป้องกันด้วย HTTP Basic Auth เมื่อตั้ง ADMIN_USERNAME และ ADMIN_PASSWORD",
+  serviceRoleMissing: "เพิ่ม SUPABASE_SERVICE_ROLE_KEY เพื่ออนุมัติ/ปฏิเสธผลงาน",
   notConfigured: "ตั้งค่า NEXT_PUBLIC_SUPABASE_URL และ NEXT_PUBLIC_SUPABASE_ANON_KEY ใน .env.local",
   supabaseError: "ยังไม่ได้ตั้งค่า Supabase",
   qualityError: "คะแนนคุณภาพต้องอยู่ระหว่าง 0–100",

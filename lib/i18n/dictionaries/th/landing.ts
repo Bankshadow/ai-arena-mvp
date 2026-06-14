@@ -24,7 +24,15 @@ export const landing = {
     submitSolution: "ส่งผลงาน",
     leaderboard: "อันดับ",
     workflows: "Workflow",
-    loop: ["Challenge", "Workflow", "Score", "Leaderboard"],
+    loop: ["Challenge", "Battle", "Tournament", "Arena", "Leaderboard"],
+    pathsTitle: "สำรวจ AI ARENA",
+    paths: [
+      { href: "/challenge/executive-summary-battle", label: "Challenge", desc: "อ่านโจทย์" },
+      { href: "/battle", label: "Battle", desc: "แข่ง 5 agents" },
+      { href: "/tournament", label: "Tournament", desc: "ลูป AI อัตโนมัติ" },
+      { href: "/arena", label: "Arena", desc: "มนุษย์ vs AI" },
+      { href: "/leaderboard", label: "Leaderboard", desc: "อันดับรวม" },
+    ],
   },
   pain: {
     label: "ทำไม AI ARENA",

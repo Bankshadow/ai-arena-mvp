@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Bot, Sparkles, Swords } from "lucide-react";
+import Link from "next/link";
 
 import { BattleResults } from "@/components/battles/battle-results";
 import { Nav } from "@/components/Nav";
 import { getAgentById } from "@/lib/agents/personas";
+import { readArenaBridge } from "@/lib/bridge/arena-output";
 import { DEFAULT_BATTLE_AGENTS } from "@/lib/battle/constants";
 import { upsertLocalBattle } from "@/lib/battle/local-storage";
 import type { BattleMode, SavedBattleRecord } from "@/lib/battle/saved-battle";
@@ -39,6 +41,11 @@ export function BattleView() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [persistNote, setPersistNote] = useState<string | null>(null);
+  const [arenaBridge, setArenaBridge] = useState<ReturnType<typeof readArenaBridge>>(null);
+
+  useEffect(() => {
+    setArenaBridge(readArenaBridge());
+  }, []);
 
   const effectiveTopic = customTopic.trim() || topic;
 
@@ -135,6 +142,20 @@ export function BattleView() {
           An AI designs the challenge. Five agents compete to meet the rubric using the fewest
           tokens. Winner = passes quality gate + lowest total tokens.
         </p>
+
+        {arenaBridge && (
+          <div className="mt-6 rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-100">
+            Arena output loaded ({arenaBridge.output.length} chars, rank #{arenaBridge.rank ?? "?"}).
+            {" "}
+            <Link href="/submit" className="font-medium underline hover:text-white">
+              Submit to leaderboard
+            </Link>
+            {" · "}
+            <Link href="/arena" className="font-medium underline hover:text-white">
+              Back to Arena
+            </Link>
+          </div>
+        )}
 
         {phase === "setup" && (
           <section className="glass-card mt-8 space-y-5 rounded-2xl p-6">

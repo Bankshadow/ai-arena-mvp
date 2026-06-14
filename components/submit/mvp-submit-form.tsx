@@ -1,11 +1,13 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import { AlertCircle, CheckCircle2, Loader2, Send } from "lucide-react";
 
 import { useTranslations } from "@/components/i18n/locale-provider";
 import { Nav } from "@/components/Nav";
+import { setUserEmailCookie, getUserEmailFromDocument } from "@/lib/auth/user-cookie";
+import { readArenaBridge } from "@/lib/bridge/arena-output";
 import { DEFAULT_CHALLENGE_SLUG } from "@/lib/constants";
 import type { Dictionary } from "@/lib/i18n/types";
 import { createBrowserSupabase, isSupabaseConfigured } from "@/lib/supabase";
@@ -75,6 +77,23 @@ export function MvpSubmitForm({ challengeName }: MvpSubmitFormProps) {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
+  useEffect(() => {
+    const savedEmail = getUserEmailFromDocument();
+    if (savedEmail) {
+      setForm((f) => ({ ...f, email: savedEmail }));
+    }
+    const bridge = readArenaBridge();
+    if (bridge) {
+      setForm((f) => ({
+        ...f,
+        name: bridge.name || f.name,
+        modelUsed: bridge.modelUsed || f.modelUsed,
+        estimatedCost: bridge.costUsd ? String(bridge.costUsd) : f.estimatedCost,
+        outputResult: bridge.output || f.outputResult,
+      }));
+    }
+  }, []);
+
   const title = challengeName ?? s.challengeName;
 
   async function handleSubmit(e: FormEvent) {
@@ -114,6 +133,7 @@ export function MvpSubmitForm({ challengeName }: MvpSubmitFormProps) {
       return;
     }
 
+    setUserEmailCookie(form.email.trim());
     setSuccess(true);
     setForm(emptyForm(roles));
   }

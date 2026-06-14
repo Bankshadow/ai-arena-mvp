@@ -1,5 +1,5 @@
--- AI ARENA — Tournament rounds table
--- Run this in Supabase Dashboard → SQL Editor → New query → Run
+-- DEPRECATED — applied via migration 20250102000000_tournament_rounds.sql
+-- Use: npm run supabase:push
 
 create table if not exists public.tournament_rounds (
   id uuid primary key default gen_random_uuid(),

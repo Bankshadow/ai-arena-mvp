@@ -303,6 +303,26 @@ export function LandingPage({ data }: LandingPageProps) {
               </span>
             ))}
           </div>
+
+          {"paths" in l.hero && l.hero.paths && (
+            <div className="mt-12 mx-auto max-w-3xl">
+              <p className="text-center text-xs uppercase tracking-[0.2em] text-zinc-500">
+                {l.hero.pathsTitle}
+              </p>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {l.hero.paths.map((path) => (
+                  <Link
+                    key={path.href}
+                    href={path.href}
+                    className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-left transition hover:border-cyan-500/30 hover:bg-cyan-500/5"
+                  >
+                    <p className="font-medium text-zinc-200">{path.label}</p>
+                    <p className="mt-1 text-xs text-zinc-500">{path.desc}</p>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
         </section>
 
         {/* Pain Points */}

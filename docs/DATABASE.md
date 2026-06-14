@@ -1,127 +1,69 @@
 # AI ARENA — Database setup
 
-## Stack
+## Primary path: Supabase (MVP)
 
-- **Postgres** (Vercel Postgres / Neon)
-- **Drizzle ORM** (`db/schema.ts`)
-- **Neon serverless driver** (`@neondatabase/serverless`)
+The live app uses **Supabase Postgres**, not Drizzle/Neon.
 
-## Tables
+### Tables
 
 | Table | Purpose |
 |-------|---------|
-| `challenges` | Challenge metadata, deadlines, scoring weights |
-| `submissions` | User entries (name + email identity, no auth); optional `role`, `workflow_notes` |
-| `scores` | AI Judge / computed scores per submission |
-| `waitlist_signups` | Landing page beta waitlist |
+| `submissions` | Human workflow submissions |
+| `battles` | Token efficiency battle history |
+| `tournament_rounds` | Tournament round snapshots |
+| `marketplace_listings` | Tournament → marketplace seeds |
 
-## Local setup
+### Schema source of truth
 
-1. Create a Postgres database (Vercel Storage → Postgres, or Neon).
-2. Copy env file:
-
-   ```bash
-   cp .env.example .env.local
-   ```
-
-3. Set `DATABASE_URL` in `.env.local`.
-4. Push schema:
-
-   ```bash
-   npm run db:push
-   ```
-
-5. Seed Challenge #1:
-
-   ```bash
-   npm run db:seed
-   ```
-
-6. (Optional) Placeholder challenge PDF:
-
-   ```bash
-   npm run challenge:pdf
-   ```
-
-7. (Optional) Open / close submissions:
-
-   ```bash
-   npm run challenge:open
-   npm run challenge:close
-   ```
-
-## GitHub Actions
-
-On push to `main` when `db/**` changes, `.github/workflows/database.yml` runs `db:push` using the `DATABASE_URL` repository secret.
-
-## Vercel production
-
-1. Add **Postgres** integration in Vercel project → auto-injects `DATABASE_URL`.
-2. Run migrations from CI or locally against production URL:
-
-   ```bash
-   npm run db:push
-   npm run db:seed
-   ```
-
-3. When ready to launch:
-
-   ```bash
-   npm run challenge:open
-   ```
-
-## Submissions
-
-`/submit` persists entries via Server Action `submitChallengeEntry`:
-
-- Challenge must be `open` (`npm run challenge:open`)
-- Before deadline
-- Max 3 attempts per email (normalized lowercase)
-- Cost must be ≤ challenge `cost_limit_usd`
-
-## AI Judge
-
-After each submission, the server runs the AI Judge when `OPENAI_API_KEY` is set:
-
-- **Quality score** (0–100): GPT evaluates the output against the challenge rubric
-- **Cost efficiency** (0–100): `100 × (1 - cost / cost_limit)`
-- **Final score**: `quality × 0.8 + cost_efficiency × 0.2` (weights from DB)
-
-Score rows go to `scores`; submission `status` becomes `scored`.
-
-Batch-score pending entries:
-
-```bash
-npm run judge:pending
+```
+supabase/migrations/*.sql
 ```
 
-## Waitlist
+### Sync to remote
 
-Landing page waitlist form calls `joinWaitlist` → `waitlist_signups` table.
+```bash
+# .env.local
+NEXT_PUBLIC_SUPABASE_URL=...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+SUPABASE_DB_PASSWORD=...        # Dashboard → Settings → Database
+SUPABASE_SERVICE_ROLE_KEY=...   # Dashboard → Settings → API (server only)
 
-## Leaderboard
+npm run supabase:push
+npm run supabase:status
+```
 
-`/leaderboard` loads live rankings from Postgres:
+See [`supabase/README.md`](../supabase/README.md).
 
-- Best **final score** per email for the active challenge
-- Tie-break: lower cost wins
-- Podium + table hide when empty (CTA to submit)
+### RLS summary
 
-## Scripts
+- **Public insert** on submissions, battles, tournament_rounds, marketplace_listings
+- **Public select** on submissions: `approved` only (RLS v2)
+- **Admin / account history** use `SUPABASE_SERVICE_ROLE_KEY` on server
 
-| Command | Description |
-|---------|-------------|
-| `npm run db:generate` | Generate SQL migrations from schema |
-| `npm run db:migrate` | Apply migrations |
-| `npm run db:push` | Push schema directly (fastest for MVP) |
-| `npm run db:seed` | Seed Executive Summary Battle #1 |
-| `npm run db:studio` | Drizzle Studio UI |
-| `npm run challenge:open` | Set challenge status to `open` |
+Migration: `20250104000000_rls_v2_submissions.sql`
 
-## Challenge input file
+---
 
-Place the PDF at:
+## Legacy path: Drizzle / Neon (optional)
 
-`public/challenges/executive-summary-battle.pdf`
+Not used by the Supabase MVP UI. Kept for historical scripts.
 
-The seeded row points to `/challenges/executive-summary-battle.pdf`.
+| Table | Purpose |
+|-------|---------|
+| `challenges` | Challenge metadata |
+| `submissions` | Legacy Postgres submissions |
+| `scores` | AI Judge scores |
+| `waitlist_signups` | Landing waitlist |
+
+```bash
+npm run db:push
+npm run db:seed
+```
+
+See `.github/workflows/database.yml` for CI on `db/**` changes.
+
+---
+
+## TypeScript types
+
+Update `lib/supabase/types.ts` when migrations add columns/tables.

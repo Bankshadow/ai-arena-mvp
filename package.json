@@ -16,7 +16,16 @@
     "challenge:close": "tsx scripts/close-challenge.ts",
     "challenge:pdf": "tsx scripts/generate-challenge-pdf.ts",
     "judge:pending": "tsx scripts/score-pending.ts",
-    "setup:env": "node scripts/setup-env.mjs"
+    "setup:env": "node scripts/setup-env.mjs",
+    "smoke": "node scripts/smoke-test.mjs",
+    "smoke:prod": "node scripts/smoke-test.mjs https://ai-arena-drab.vercel.app",
+    "e2e": "tsx scripts/e2e-flow-test.ts",
+    "supabase:login": "supabase login",
+    "supabase:link": "node scripts/supabase-link.mjs",
+    "supabase:push": "node scripts/supabase-push.mjs",
+    "supabase:status": "supabase migration list",
+    "supabase:new": "node scripts/supabase-new-migration.mjs",
+    "supabase:diff": "supabase db diff -f"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.104.1",
@@ -47,6 +56,7 @@
     "eslint-config-next": "16.2.6",
     "tailwindcss": "^4",
     "tsx": "^4.22.4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "supabase": "^2.20.12"
   }
 }

@@ -1,19 +1,28 @@
 import { LeaderboardView } from "@/components/leaderboard/leaderboard-view";
-import { mapApprovedToLeaderboardRows } from "@/lib/leaderboard/map-rows";
-import { mockToRows } from "@/lib/leaderboard/merge-rows";
-import { fetchApprovedSubmissions, isSupabaseConfigured } from "@/lib/supabase/submissions";
+import {
+  buildMockUnifiedLeaderboard,
+  buildUnifiedLeaderboard,
+} from "@/lib/leaderboard/unified";
+import { isSupabaseConfigured } from "@/lib/supabase";
 
 export default async function LeaderboardPage() {
   if (!isSupabaseConfigured()) {
-    return <LeaderboardView rows={mockToRows()} source="mock" />;
+    return (
+      <LeaderboardView
+        rows={buildMockUnifiedLeaderboard()}
+        source="mock"
+        meta={{ sources: { human: 0, agent: 10, "agent-live": 0, battle: 0, tournament: 0 }, total: 10 }}
+      />
+    );
   }
 
-  const approved = await fetchApprovedSubmissions();
-  if (approved.length === 0) {
-    return <LeaderboardView rows={[]} source="empty" />;
-  }
+  const { rows, meta } = await buildUnifiedLeaderboard();
 
   return (
-    <LeaderboardView rows={mapApprovedToLeaderboardRows(approved)} source="supabase" />
+    <LeaderboardView
+      rows={rows}
+      source={rows.length > 0 ? "unified" : "empty"}
+      meta={meta}
+    />
   );
 }

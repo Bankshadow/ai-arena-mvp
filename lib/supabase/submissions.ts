@@ -1,5 +1,6 @@
 import { DEFAULT_CHALLENGE_SLUG } from "@/lib/constants";
 import { getSupabase, isSupabaseConfigured } from "@/lib/supabase";
+import { getSupabaseAdmin } from "@/lib/supabase/admin-client";
 import { computeCostScore, computeFinalScore } from "@/lib/supabase/scoring";
 import type { SubmissionInsert, SubmissionRow, SubmissionStatus } from "@/lib/supabase/types";
 
@@ -56,6 +57,44 @@ export async function fetchApprovedSubmissions(
 
   if (error || !data) return [];
   return sortApprovedSubmissions(data as SubmissionRow[]);
+}
+
+export async function fetchSubmissionsByEmail(
+  email: string,
+  challengeId = DEFAULT_CHALLENGE_SLUG,
+): Promise<SubmissionRow[]> {
+  const supabase = getSupabase();
+  if (!supabase) return [];
+
+  const { data, error } = await supabase
+    .from("submissions")
+    .select("*")
+    .eq("challenge_id", challengeId)
+    .eq("email", email.toLowerCase())
+    .order("created_at", { ascending: false });
+
+  if (error || !data) return [];
+  return data as SubmissionRow[];
+}
+
+/** Server API — bypass RLS so users see pending + approved rows for their email. */
+export async function fetchSubmissionsByEmailForAccount(
+  email: string,
+  challengeId = DEFAULT_CHALLENGE_SLUG,
+): Promise<SubmissionRow[]> {
+  const admin = getSupabaseAdmin();
+  const client = admin ?? getSupabase();
+  if (!client) return [];
+
+  const { data, error } = await client
+    .from("submissions")
+    .select("*")
+    .eq("challenge_id", challengeId)
+    .eq("email", email.toLowerCase())
+    .order("created_at", { ascending: false });
+
+  if (error || !data) return [];
+  return data as SubmissionRow[];
 }
 
 export async function fetchSubmissionsByStatus(

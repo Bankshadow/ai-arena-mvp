@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { Swords } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ArrowRight, Swords } from "lucide-react";
 
 import { Nav } from "@/components/Nav";
 import { HUMAN_ID, rankHuman, type HumanResult } from "@/lib/agents/human";
+import { readArenaBridge, saveArenaBridge } from "@/lib/bridge/arena-output";
 
 const MODELS = ["claude-3-5-haiku", "claude-sonnet-4-6", "claude-opus-4-8", "gpt-4o-mini", "gpt-4o"];
 
@@ -17,6 +18,16 @@ export function ArenaView() {
   const [result, setResult] = useState<HumanResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const bridge = readArenaBridge();
+    if (bridge) {
+      if (bridge.name) setName(bridge.name);
+      if (bridge.modelUsed) setModelUsed(bridge.modelUsed);
+      if (bridge.costUsd) setCostUsd(bridge.costUsd);
+      if (bridge.output) setOutput(bridge.output);
+    }
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -36,7 +47,16 @@ export function ArenaView() {
       if (!res.ok) {
         throw new Error(typeof data.error === "string" ? data.error : "Judge failed");
       }
-      setResult(rankHuman({ name, modelUsed, costUsd, output }, undefined, data));
+      const ranked = rankHuman({ name, modelUsed, costUsd, output }, undefined, data);
+      setResult(ranked);
+      saveArenaBridge({
+        name: name || "You",
+        modelUsed,
+        costUsd,
+        output,
+        finalScore: ranked.you.score.finalScore,
+        rank: ranked.you.rank,
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to score submission");
     } finally {
@@ -168,6 +188,30 @@ export function ArenaView() {
                     <p className="text-xs text-zinc-500">Final</p>
                     <p className="font-mono text-white">{result.you.score.finalScore}</p>
                   </div>
+                </div>
+
+                <div className="mt-5 flex flex-wrap gap-2">
+                  <Link
+                    href="/submit"
+                    className="inline-flex items-center gap-1 rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-3 py-2 text-xs text-cyan-200 hover:bg-cyan-500/20"
+                  >
+                    Submit to leaderboard
+                    <ArrowRight className="size-3.5" />
+                  </Link>
+                  <Link
+                    href="/battle"
+                    className="inline-flex items-center gap-1 rounded-lg border border-violet-500/40 bg-violet-500/10 px-3 py-2 text-xs text-violet-200 hover:bg-violet-500/20"
+                  >
+                    Run AI battle
+                    <ArrowRight className="size-3.5" />
+                  </Link>
+                  <Link
+                    href="/enterprise"
+                    className="inline-flex items-center gap-1 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200 hover:bg-emerald-500/20"
+                  >
+                    Enterprise benchmark
+                    <ArrowRight className="size-3.5" />
+                  </Link>
                 </div>
 
                 <div className="mt-5 max-h-64 overflow-y-auto rounded-lg border border-white/10">

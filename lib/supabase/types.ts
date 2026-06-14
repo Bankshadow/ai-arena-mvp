@@ -58,3 +58,20 @@ export type TournamentRoundRow = {
   payload: Record<string, unknown>;
   created_at: string;
 };
+
+export type MarketplaceListingRow = {
+  id: string;
+  slug: string;
+  title: string;
+  agent_id: string;
+  agent_name: string;
+  challenge_title: string;
+  total_score: number;
+  marketplace_score: number;
+  suggested_price_usd: number;
+  status: "seed" | "review" | "listed";
+  workflow_steps: string[];
+  prompt_template: string | null;
+  payload: Record<string, unknown>;
+  created_at: string;
+};

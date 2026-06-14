@@ -1,91 +1,58 @@
-# AI ARENA — Challenge #1 launch checklist
+# AI ARENA — Launch checklist
+
+Updated: 2026-06-14 (Supabase MVP + Phase A–D)
 
 ## Environment (Vercel)
 
-In **Project → Settings → Environment Variables** (Production + Preview):
+Import from `vercel.env.example` or set manually:
 
 | Variable | Required | Notes |
 |----------|----------|--------|
-| `DATABASE_URL` | Yes | From Vercel Postgres / Neon integration |
-| `OPENAI_API_KEY` | For auto-scoring | AI Judge on submit + `npm run judge:pending` |
-| `JUDGE_MODEL` | No | Default `gpt-4o-mini` |
+| `NEXT_PUBLIC_SUPABASE_URL` | Yes | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Anon / publishable key |
+| `SUPABASE_SERVICE_ROLE_KEY` | Yes | Admin approve + account history |
+| `ADMIN_USERNAME` | Yes | Protect `/admin` |
+| `ADMIN_PASSWORD` | Yes | Strong password |
+| `ANTHROPIC_API_KEY` | Optional | Live LLM; omit = mock mode |
 
-After adding variables, **redeploy** so serverless functions pick them up.
+Redeploy after changing env vars.
 
-### One-time production database
-
-From your machine (with production `DATABASE_URL` in env, or Vercel CLI):
-
-```bash
-npm run db:push
-npm run db:seed
-npm run challenge:open
-```
-
-Or use Vercel’s SQL console / Neon dashboard to confirm tables exist, then run the same scripts locally against the production connection string.
-
-## Local development
+## Database (one-time per environment)
 
 ```bash
-cp .env.example .env.local
-# Set DATABASE_URL and optionally OPENAI_API_KEY
-
-npm run db:push
-npm run db:seed
-npm run challenge:open
-npm run dev
+npm run supabase:push
 ```
+
+Or run migrations via CI with `SUPABASE_DB_PASSWORD` + project ref.
 
 ## Smoke test
 
-1. **Landing** `/` — waitlist saves to `waitlist_signups`; cohort bar uses DB count when connected
-2. **Challenge** `/challenge/executive-summary-battle` — live status badge, submission/player/scored stats when DB connected
-3. **Submit** `/submit` — persists to Postgres when challenge is `open`; shows judge scores if `OPENAI_API_KEY` set; falls back to localStorage without DB
-4. **Leaderboard** `/leaderboard` — live ranked entries from scored submissions (+ local demo rows)
-5. **Workflows** `/workflows` — top 3 workflows from DB when scored entries exist; else demo cards
-6. Hero CTA on landing → **Submit entry** when challenge status is `open`
-
-## PDF input
-
-Place file at `public/challenges/executive-summary-battle.pdf` (linked from challenge page when present).
-
-## Manual scoring backlog
-
-If submissions stay `pending` (no OpenAI key at submit time):
-
 ```bash
-npm run judge:pending
+npm run smoke:prod
+# or locally:
+npm run dev
+npm run smoke
+npm run e2e
 ```
 
-## Challenge input PDF
+### Manual browser checks
 
-```bash
-npm run challenge:pdf     # placeholder for local dev (public/challenges/...)
-# Replace with the real 20-page PDF before production — see public/challenges/README.md
-```
+1. **Submit** `/submit` → row in Supabase `submissions` (pending)
+2. **Admin** `/admin` → Basic Auth → approve → leaderboard
+3. **Arena** `/arena` → judge output → links to Submit / Battle / Enterprise
+4. **Account** `/account` → email → see submission history
+5. **Tournament** `/tournament` → complete round → `/marketplace` listings
+6. **Workflows** `/workflows/[slug]` → clone prompt / download `.md`
 
-## Open / close challenge
+## Security before public launch
 
-```bash
-npm run challenge:open    # status → open (accept submissions)
-npm run challenge:close   # status → closed (block new submissions)
-```
+- [x] Basic Auth on `/admin` (MVP11)
+- [x] RLS v2 — no public UPDATE on submissions (MVP12)
+- [ ] Rotate `ADMIN_PASSWORD` and `SUPABASE_SERVICE_ROLE_KEY` if ever leaked
+- [ ] Never commit `.env.local`
 
-## GitHub Actions (schema deploy)
+## Production URL
 
-Workflow `.github/workflows/database.yml` runs `npm run db:push` when `db/**` changes on `main`.
+https://ai-arena-drab.vercel.app
 
-1. GitHub repo → **Settings → Secrets → Actions**
-2. Add `DATABASE_URL` (same value as Vercel Postgres)
-3. Push to `main` or run workflow **Database** manually
-
-Optional: trigger **workflow_dispatch** to also run `db:seed` after schema push.
-
-## Troubleshooting
-
-| Symptom | Fix |
-|---------|-----|
-| Submit says “database is not configured” | Set `DATABASE_URL` on Vercel and redeploy |
-| Submit says “not open yet” | `npm run challenge:open` against that database |
-| Leaderboard empty with DB | Need scored submissions; set `OPENAI_API_KEY` or run `judge:pending` |
-| Workflows show demo cards | No scored submissions yet — complete smoke test step 4 |
+Status log: [`HANDOFF.md`](../HANDOFF.md)

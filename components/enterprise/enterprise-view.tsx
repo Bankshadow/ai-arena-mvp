@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Building2, Lock, Upload } from "lucide-react";
 
 import { Nav } from "@/components/Nav";
 import { HUMAN_ID, rankHuman, type HumanResult } from "@/lib/agents/human";
 import type { AgentPersona, AgentPersonaId } from "@/lib/agents/types";
+import { readArenaBridge } from "@/lib/bridge/arena-output";
+import { runEnterpriseBenchmark } from "@/lib/enterprise/benchmark";
 
 type Props = { personas: AgentPersona[] };
 
@@ -19,8 +21,18 @@ export function EnterpriseView({ personas }: Props) {
   const [selected, setSelected] = useState<AgentPersonaId[]>(["frugal", "laureate", "scholar", "atlas"]);
   const [internalName, setInternalName] = useState("Internal RAG pipeline");
   const [internalCost, setInternalCost] = useState(0.25);
-  const [internalQuality, setInternalQuality] = useState(72);
+  const [internalOutput, setInternalOutput] = useState("");
   const [result, setResult] = useState<HumanResult | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [judgeMode, setJudgeMode] = useState<"llm" | "heuristic" | null>(null);
+
+  useEffect(() => {
+    const bridge = readArenaBridge();
+    if (bridge?.output) setInternalOutput(bridge.output);
+    if (bridge?.name) setInternalName(bridge.name);
+    if (bridge?.costUsd) setInternalCost(bridge.costUsd);
+  }, []);
 
   const weightTotal = weights.reduce((a, b) => a + b, 0);
 
@@ -28,17 +40,32 @@ export function EnterpriseView({ personas }: Props) {
     setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
   }
 
-  function run() {
-    // Map the quality slider to a representative output for the heuristic judge.
-    const filler = "executive summary key risks business impact recommendations ".repeat(
-      Math.max(1, Math.round(internalQuality / 10)),
-    );
-    setResult(
-      rankHuman(
-        { name: internalName, modelUsed: "internal", costUsd: internalCost, output: filler },
-        selected.length ? selected : undefined,
-      ),
-    );
+  async function run() {
+    setLoading(true);
+    setError(null);
+    setResult(null);
+    setJudgeMode(null);
+
+    try {
+      const { judged, judgeMode: mode } = await runEnterpriseBenchmark({
+        internalName,
+        internalCost,
+        output: internalOutput,
+        selectedAgentIds: selected,
+      });
+      setJudgeMode(mode);
+      setResult(
+        rankHuman(
+          { name: internalName, modelUsed: "internal", costUsd: internalCost, output: internalOutput },
+          selected.length ? selected : undefined,
+          judged ?? undefined,
+        ),
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Benchmark failed");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -149,35 +176,38 @@ export function EnterpriseView({ personas }: Props) {
                 onChange={(e) => setInternalName(e.target.value)}
                 className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm outline-none focus:border-cyan-400/40"
               />
-              <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
-                <div>
-                  <label className="mb-1 block text-xs text-zinc-500">
-                    Cost/run: <span className="font-mono text-cyan-400">${internalCost.toFixed(2)}</span>
-                  </label>
-                  <input
-                    type="range" min={0.01} max={1} step={0.01} value={internalCost}
-                    onChange={(e) => setInternalCost(Number(e.target.value))}
-                    className="w-full accent-violet-500"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs text-zinc-500">
-                    Quality: <span className="font-mono text-violet-300">{internalQuality}</span>
-                  </label>
-                  <input
-                    type="range" min={40} max={98} value={internalQuality}
-                    onChange={(e) => setInternalQuality(Number(e.target.value))}
-                    className="w-full accent-violet-500"
-                  />
-                </div>
+              <div className="mt-3">
+                <label className="mb-1 block text-xs text-zinc-500">
+                  Cost/run: <span className="font-mono text-cyan-400">${internalCost.toFixed(2)}</span>
+                </label>
+                <input
+                  type="range" min={0.01} max={1} step={0.01} value={internalCost}
+                  onChange={(e) => setInternalCost(Number(e.target.value))}
+                  className="w-full accent-violet-500"
+                />
+              </div>
+              <div className="mt-3">
+                <label className="mb-1 block text-xs text-zinc-500">Workflow output (AI-judged)</label>
+                <textarea
+                  value={internalOutput}
+                  onChange={(e) => setInternalOutput(e.target.value)}
+                  rows={6}
+                  placeholder="Paste your internal workflow output — scored via /api/judge-output (same rubric as Arena)."
+                  className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm outline-none focus:border-cyan-400/40"
+                />
               </div>
             </div>
+            {error && (
+              <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
+                {error}
+              </p>
+            )}
             <button
               onClick={run}
-              disabled={selected.length === 0}
+              disabled={selected.length === 0 || loading || internalOutput.trim().length < 40}
               className="w-full rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-5 py-2.5 text-sm font-medium text-emerald-200 hover:bg-emerald-500/20 disabled:opacity-40"
             >
-              Run private benchmark
+              {loading ? "Judging & ranking…" : "Run private benchmark"}
             </button>
           </section>
         </div>
@@ -194,6 +224,11 @@ export function EnterpriseView({ personas }: Props) {
             <p className="mt-2 text-sm text-zinc-400">
               {internalName} ranked <span className="text-white">#{result.you.rank}</span> of{" "}
               {result.board.length}, beating {result.beat} of {result.board.length - 1} AI baselines.
+              {judgeMode && (
+                <span className="ml-2 text-xs text-zinc-500">
+                  ({judgeMode === "llm" ? "AI judge" : "heuristic fallback"})
+                </span>
+              )}
             </p>
             <div className="mt-4 overflow-x-auto rounded-lg border border-white/10">
               <table className="w-full min-w-[520px] text-sm">

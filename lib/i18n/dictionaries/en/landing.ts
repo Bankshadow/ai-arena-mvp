@@ -24,7 +24,15 @@ export const landing = {
     submitSolution: "Submit Solution",
     leaderboard: "Leaderboard",
     workflows: "Workflows",
-    loop: ["Challenge", "Workflow", "Score", "Leaderboard"],
+    loop: ["Challenge", "Battle", "Tournament", "Arena", "Leaderboard"],
+    pathsTitle: "Explore the arena",
+    paths: [
+      { href: "/challenge/executive-summary-battle", label: "Challenge", desc: "Read the brief" },
+      { href: "/battle", label: "Battle", desc: "5-agent token fight" },
+      { href: "/tournament", label: "Tournament", desc: "Autonomous AI loop" },
+      { href: "/arena", label: "Arena", desc: "Human vs AI" },
+      { href: "/leaderboard", label: "Leaderboard", desc: "Unified rankings" },
+    ],
   },
   pain: {
     label: "Why AI ARENA",

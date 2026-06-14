@@ -10,7 +10,9 @@ export const nav = {
   submit: "ส่งผลงาน",
   leaderboard: "อันดับ",
   workflows: "Workflow",
+  marketplace: "Marketplace",
   enterprise: "สำหรับองค์กร",
+  account: "บัญชี",
   admin: "แอดมิน",
   toggleMenu: "เปิด/ปิดเมนู",
 };

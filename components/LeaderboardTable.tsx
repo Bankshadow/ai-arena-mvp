@@ -13,6 +13,8 @@ export type LeaderboardRow = {
   modelUsed: string;
   submittedAt?: string;
   highlight?: boolean;
+  source?: "human" | "agent" | "agent-live" | "battle" | "tournament";
+  sourceLabel?: string;
 };
 
 function rankBadgeClass(rank: number) {
@@ -59,6 +61,7 @@ export function LeaderboardTable({ rows, emptyMessage }: LeaderboardTableProps) 
             <tr className="border-b border-white/10 text-xs uppercase tracking-wider text-zinc-500">
               <th className="px-5 py-4">{c.rank}</th>
               <th className="px-5 py-4">{c.player}</th>
+              <th className="px-5 py-4">Source</th>
               <th className="px-5 py-4">{c.model}</th>
               <th className="px-5 py-4 text-right">{c.quality}</th>
               <th className="px-5 py-4 text-right">{c.cost}</th>
@@ -83,6 +86,11 @@ export function LeaderboardTable({ rows, emptyMessage }: LeaderboardTableProps) 
                   </span>
                 </td>
                 <td className="px-5 py-4 font-medium">{row.player}</td>
+                <td className="px-5 py-4">
+                  <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] uppercase tracking-wide text-zinc-400">
+                    {row.sourceLabel ?? row.source ?? "—"}
+                  </span>
+                </td>
                 <td className="px-5 py-4 text-zinc-400">{row.modelUsed}</td>
                 <td className="px-5 py-4 text-right font-mono text-zinc-300">
                   {row.qualityScore}

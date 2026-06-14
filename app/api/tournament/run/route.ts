@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { saveTournamentRound, ensureTournamentTableReady } from "@/lib/supabase/tournaments";
+import { upsertMarketplaceCandidates } from "@/lib/supabase/marketplace";
 import { runTournamentLoopAsync, type LoopStep } from "@/lib/tournament/engine";
 import { shouldAutoSaveTournament } from "@/lib/tournament/saved-tournament";
 import type { TournamentState } from "@/lib/tournament/types";
@@ -48,6 +49,9 @@ export async function POST(request: Request) {
         const saved = await saveTournamentRound(nextState, result.mode);
         savedRoundId = saved.id;
         persistError = saved.error;
+        if (nextState.marketplace.length > 0) {
+          await upsertMarketplaceCandidates(nextState.marketplace.slice(0, 5));
+        }
       }
     }
 

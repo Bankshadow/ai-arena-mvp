@@ -16,7 +16,7 @@ import { AGENT_PERSONAS } from "@/lib/agents/personas";
 
 import { Nav } from "@/components/Nav";
 import { useTranslations } from "@/components/i18n/locale-provider";
-import { createBrowserSupabase, isSupabaseConfigured } from "@/lib/supabase";
+import { isSupabaseConfigured } from "@/lib/supabase";
 import { computeCostScore, computeFinalScore } from "@/lib/supabase/scoring";
 import type { SubmissionRow, SubmissionStatus } from "@/lib/supabase/types";
 import { DEFAULT_CHALLENGE_SLUG } from "@/lib/constants";
@@ -38,6 +38,7 @@ export function AdminReviewPanel() {
     { value: "rejected", label: a.filters.rejected },
     { value: "all", label: a.filters.all },
   ];
+  const [adminReady, setAdminReady] = useState(false);
   const configured = isSupabaseConfigured();
   const [filter, setFilter] = useState<Filter>("pending");
   const [rows, setRows] = useState<SubmissionRow[]>([]);
@@ -50,9 +51,8 @@ export function AdminReviewPanel() {
   const [actionId, setActionId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const supabase = createBrowserSupabase();
-    if (!supabase) {
-      setError(a.supabaseError);
+    if (!adminReady) {
+      setError(a.serviceRoleMissing);
       setLoading(false);
       return;
     }
@@ -60,31 +60,37 @@ export function AdminReviewPanel() {
     setLoading(true);
     setError(null);
 
-    let query = supabase
-      .from("submissions")
-      .select("*")
-      .eq("challenge_id", DEFAULT_CHALLENGE_SLUG)
-      .order("created_at", { ascending: false });
-
-    if (filter !== "all") {
-      query = query.eq("status", filter);
+    try {
+      const statusParam = filter === "all" ? "all" : filter;
+      const res = await fetch(
+        `/api/admin/submissions?status=${statusParam}&challengeId=${DEFAULT_CHALLENGE_SLUG}`,
+        { credentials: "include" },
+      );
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        setError(data.error ?? `HTTP ${res.status}`);
+        return;
+      }
+      const data = (await res.json()) as { submissions: SubmissionRow[] };
+      setRows(data.submissions ?? []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLoading(false);
     }
-
-    const { data, error: fetchError } = await query;
-    setLoading(false);
-
-    if (fetchError) {
-      setError(fetchError.message);
-      return;
-    }
-
-    setRows(data ?? []);
-  }, [filter]);
+  }, [filter, adminReady, a.serviceRoleMissing]);
 
   useEffect(() => {
-    if (configured) load();
-    else setLoading(false);
-  }, [configured, load]);
+    fetch("/api/admin/status", { credentials: "include" })
+      .then((r) => r.json())
+      .then((d: { ready?: boolean }) => setAdminReady(Boolean(d.ready)))
+      .catch(() => setAdminReady(false));
+  }, []);
+
+  useEffect(() => {
+    if (adminReady) load();
+    else if (!configured) setLoading(false);
+  }, [adminReady, configured, load]);
 
   function getDraft(row: SubmissionRow) {
     return (
@@ -118,31 +124,23 @@ export function AdminReviewPanel() {
       return;
     }
 
-    const supabase = createBrowserSupabase();
-    if (!supabase) return;
-
     setActionId(row.id);
     setError(null);
 
-    const cost = Number(row.estimated_cost);
-    const costScore = computeCostScore(cost);
-    const finalScore = computeFinalScore(quality, costScore);
-
-    const { error: updateError } = await supabase
-      .from("submissions")
-      .update({
-        status: "approved",
-        quality_score: quality,
-        cost_score: costScore,
-        final_score: finalScore,
-        admin_notes: draft.adminNotes.trim() || null,
-        reviewed_at: new Date().toISOString(),
-      })
-      .eq("id", row.id);
+    const res = await fetch(`/api/admin/submissions/${row.id}/approve`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        qualityScore: quality,
+        adminNotes: draft.adminNotes.trim() || undefined,
+      }),
+    });
 
     setActionId(null);
-    if (updateError) {
-      setError(updateError.message);
+    if (!res.ok) {
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      setError(data.error ?? `HTTP ${res.status}`);
       return;
     }
     await load();
@@ -151,24 +149,21 @@ export function AdminReviewPanel() {
 
   async function handleReject(row: SubmissionRow) {
     const draft = getDraft(row);
-    const supabase = createBrowserSupabase();
-    if (!supabase) return;
 
     setActionId(row.id);
     setError(null);
 
-    const { error: updateError } = await supabase
-      .from("submissions")
-      .update({
-        status: "rejected",
-        admin_notes: draft.adminNotes.trim() || null,
-        reviewed_at: new Date().toISOString(),
-      })
-      .eq("id", row.id);
+    const res = await fetch(`/api/admin/submissions/${row.id}/reject`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ adminNotes: draft.adminNotes.trim() || undefined }),
+    });
 
     setActionId(null);
-    if (updateError) {
-      setError(updateError.message);
+    if (!res.ok) {
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      setError(data.error ?? `HTTP ${res.status}`);
       return;
     }
     await load();
@@ -191,8 +186,8 @@ export function AdminReviewPanel() {
           <span>{a.warning}</span>
         </div>
 
-        {!configured && (
-          <p className="mt-4 text-sm text-red-400">{a.notConfigured}</p>
+        {!adminReady && (
+          <p className="mt-4 text-sm text-red-400">{a.serviceRoleMissing}</p>
         )}
 
         {error && (

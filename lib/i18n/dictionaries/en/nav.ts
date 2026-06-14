@@ -10,7 +10,9 @@ export const nav = {
   submit: "Submit",
   leaderboard: "Leaderboard",
   workflows: "Workflows",
+  marketplace: "Marketplace",
   enterprise: "For Teams",
+  account: "Account",
   admin: "Admin",
   toggleMenu: "Toggle menu",
 };

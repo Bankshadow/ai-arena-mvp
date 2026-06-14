@@ -2,102 +2,92 @@
 
 Compete to build the most efficient AI workflows.
 
-**MVP loop:** Challenge → Submit → Admin Review → Score → Leaderboard
+**Live:** [ai-arena-drab.vercel.app](https://ai-arena-drab.vercel.app)  
+**MVP loop:** Challenge → Arena / Battle / Tournament → Submit → Admin → Leaderboard → Marketplace
+
+## Quick start
+
+```bash
+npm install
+cp env.import.example .env.local   # fill Supabase + optional keys
+npm run dev                        # http://localhost:3005
+```
 
 ## Supabase setup
 
-1. Create a project at [supabase.com](https://supabase.com).
-2. In **SQL Editor**, run the full script from [`supabase/schema.sql`](supabase/schema.sql).
-3. In **Project Settings → API**, copy:
-   - Project URL → `NEXT_PUBLIC_SUPABASE_URL`
-   - `anon` `public` key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+**Recommended — CLI migrations (no manual SQL Editor):**
+
+```bash
+# .env.local: NEXT_PUBLIC_SUPABASE_*, SUPABASE_DB_PASSWORD
+npm run supabase:push
+```
+
+See [`supabase/README.md`](supabase/README.md) and [`.cursor/rules/supabase-migrations.mdc`](.cursor/rules/supabase-migrations.mdc).
+
+**Legacy:** run [`supabase/schema.sql`](supabase/schema.sql) in SQL Editor (reference only).
 
 ### Environment variables
 
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `NEXT_PUBLIC_SUPABASE_URL` | Yes | Supabase project URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Supabase anon (public) key |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Anon / publishable key |
+| `SUPABASE_SERVICE_ROLE_KEY` | Yes* | Admin API + account history (*server only) |
+| `SUPABASE_DB_PASSWORD` | For migrations | `npm run supabase:push` |
+| `ADMIN_USERNAME` / `ADMIN_PASSWORD` | For `/admin` | HTTP Basic Auth |
+| `ANTHROPIC_API_KEY` | Optional | Live LLM; omit = mock mode |
+
+## Test
 
 ```bash
-cp .env.example .env.local
-# Edit .env.local with your Supabase values
+npm run build
+npm run smoke          # local
+npm run smoke:prod     # production
+npm run e2e            # 19 flow checks (dev server must be running)
 ```
-
-## Run locally
-
-```bash
-npm install
-npm run dev
-```
-
-Open [http://localhost:3000](http://localhost:3000).
-
-## Languages (EN / TH)
-
-The site supports **English** and **Thai**. Use the **EN | TH** switcher in the nav (or landing header). Your choice is saved in the `ai-arena-locale` cookie and applied on the next visit.
-
-Translation files live under `lib/i18n/dictionaries/en/` and `lib/i18n/dictionaries/th/`.
-
-### Test the full flow
-
-1. **Submit** — [http://localhost:3000/submit](http://localhost:3000/submit)  
-   Fill the form and submit. Row appears in Supabase `submissions` with `status = pending`.
-
-2. **Admin** — [http://localhost:3000/admin](http://localhost:3000/admin)  
-   Open a pending submission, set **Quality score** (0–100), optional notes, click **Approve** or **Reject**.  
-   Approve auto-fills `cost_score` and `final_score` using the MVP formulas.
-
-3. **Leaderboard** — [http://localhost:3000/leaderboard](http://localhost:3000/leaderboard)  
-   Only `approved` submissions appear, sorted by `final_score` (ties: lower cost wins). Top 3 are highlighted.
-
-4. **Supabase Table Editor** — confirm rows and status changes.
-
-### Scoring (MVP)
-
-**Cost score** from `estimated_cost` (USD):
-
-| Cost | Cost score |
-|------|------------|
-| ≤ $0.10 | 100 |
-| ≤ $0.25 | 90 |
-| ≤ $0.50 | 80 |
-| ≤ $1.00 | 70 |
-| > $1.00 | 0 |
-
-**Final score:** `quality_score × 0.8 + cost_score × 0.2`
-
-## Deploy to Vercel
-
-1. Push the repo and import the project in Vercel.
-2. Add environment variables (Production + Preview):
-   - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-3. Deploy. Run `supabase/schema.sql` on your production Supabase project if you have not already.
-4. Smoke-test submit → admin approve → leaderboard on the production URL.
-
-> **Security:** The admin panel has no authentication in MVP mode. RLS policies in `schema.sql` are permissive for development. Tighten policies and protect `/admin` before a public launch.
 
 ## Routes
 
 | Route | Purpose |
 |-------|---------|
 | `/` | Landing |
-| `/challenge/executive-summary-battle` | Challenge #1 details |
-| `/submit` | Submit solution (Supabase) |
-| `/leaderboard` | Approved rankings |
-| `/workflows` | Workflow library (demo / legacy) |
-| `/admin` | Manual review (unprotected MVP) |
+| `/challenge/executive-summary-battle` | Challenge #1 |
+| `/arena` | Human vs AI (AI Judge) |
+| `/battle` | 5-agent token battle |
+| `/tournament` | Autonomous tournament |
+| `/submit` | Submit solution |
+| `/leaderboard` | Unified rankings |
+| `/workflows`, `/workflows/[slug]` | Workflow library + clone |
+| `/marketplace` | Tournament workflow listings |
+| `/account` | Submission / battle / tournament history by email |
+| `/enterprise` | Private team benchmark |
+| `/admin` | Review panel (Basic Auth) |
+
+Full map: [`HANDOFF.md`](HANDOFF.md)
 
 ## Scripts
 
 ```bash
-npm run dev          # Development server
-npm run build        # Production build
-npm run lint         # ESLint
+npm run dev              # :3005
+npm run build
+npm run lint
+npm run smoke / smoke:prod
+npm run e2e
+npm run supabase:push    # sync DB migrations
+npm run supabase:new -- name
 ```
 
-Legacy Postgres/Drizzle scripts (`db:push`, `db:seed`, etc.) remain for optional use but are not required for the Supabase MVP path.
+Legacy Drizzle scripts (`db:push`, `db:seed`) remain optional.
+
+## Deploy (Vercel)
+
+1. Import repo; set env from `vercel.env.example`
+2. `npm run supabase:push` against production DB (or CI)
+3. Redeploy; run `npm run smoke:prod`
+
+## Handoff
+
+**[`HANDOFF.md`](HANDOFF.md)** — full MVP status, architecture, env, next steps for Claude/Cursor.
 
 ## Learn more
 
