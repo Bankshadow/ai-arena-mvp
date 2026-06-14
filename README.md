@@ -79,6 +79,10 @@ npm run supabase:new -- name
 
 Legacy Drizzle scripts (`db:push`, `db:seed`) remain optional.
 
+## Documentation
+
+Structured product + engineering pack for vibe-coding: [`docs/README.md`](docs/README.md) · agent instructions: [`AGENTS.md`](AGENTS.md)
+
 ## Deploy (Vercel)
 
 1. Import repo; set env from `vercel.env.example`

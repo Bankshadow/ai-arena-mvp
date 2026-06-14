@@ -1,0 +1,30 @@
+---
+description: Tournament Engine V2 — Groq-first multi-provider routing
+globs: lib/tournament/**/*
+alwaysApply: false
+---
+
+# Tournament Engine V2
+
+Read **`docs/TOURNAMENT-ENGINE-V2.md`** before changing tournament code.
+
+## Rules
+
+- Keep mock mode (`engine-mock.ts`) — never remove
+- All real API calls via `lib/tournament/providers/*` adapters
+- **Groq** for: challenge_generation, competitor_execution, preliminary_judging
+- **Claude/GPT** for: final_judging, benchmark_report, marketplace_polish, enterprise_review
+- Router: `lib/tournament/router/` — never hardcode provider in UI
+- Rate limit guard runs before each loop in `/api/tournament/run`
+- Log usage to `provider_usage_logs` (graceful if table missing)
+
+## Runtime modes
+
+`free` | `cheap` | `quality` | `enterprise` — see `runtime_modes` table / doc §2
+
+## Implementation status
+
+- T-MVP1 mock loop: ✅ done
+- T-MVP2 Groq loop: ⏳ use Cursor prompt in doc §10
+
+Schema: `supabase/migrations/20250201000000_model_provider_routing.sql`

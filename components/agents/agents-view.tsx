@@ -44,6 +44,12 @@ export function AgentsView({ personas, leaderboard }: AgentsViewProps) {
           quality, cost efficiency, token usage, and speed. They seed the leaderboard before
           any human submits.
         </p>
+        <Link
+          href="/agents/constitution-builder"
+          className="mt-4 inline-flex items-center gap-2 rounded-xl border border-violet-500/30 bg-violet-500/10 px-4 py-2 text-sm text-violet-200 hover:bg-violet-500/20"
+        >
+          Constitution Builder — design agent operating specs
+        </Link>
 
         {/* Story highlights */}
         <div className="mt-8 grid gap-4 sm:grid-cols-2">

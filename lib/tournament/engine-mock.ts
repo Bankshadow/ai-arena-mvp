@@ -4,6 +4,7 @@ import {
   CREATOR_AGENTS,
   getCompetitor,
 } from "@/lib/tournament/agents";
+import { buildAgentConstitutionUsage } from "@/lib/constitution/tournament-bridge";
 import { breakdownEvaluation } from "@/lib/tournament/scoring";
 import type {
   AgentRun,
@@ -115,6 +116,7 @@ export function runCompetitorAgentsMock(challenge: Challenge, round: number): Ag
     const tokensIn = Math.round(p.tokensIn * jitter);
     const tokensOut = Math.round(p.tokensOut * jitter);
     const fullOutput = `## Executive Summary\n${agent.name} summary for "${challenge.title}" — ${challenge.brief.slice(0, 120)}…\n\n## Key Risks\n1. Pricing pressure\n2. Compliance gap\n3. Capacity risk\n\n## Recommendations\n1. Prioritize Q4 rollout\n2. Close integration backlog\n3. Present ROI narrative`;
+    const constitution = buildAgentConstitutionUsage(agentId);
 
     return {
       id: newId(),
@@ -129,6 +131,14 @@ export function runCompetitorAgentsMock(challenge: Challenge, round: number): Ag
       workflowSteps: p.steps,
       outputPreview: fullOutput.slice(0, 140).replace(/\n/g, " "),
       fullOutput,
+      ...(constitution
+        ? {
+            constitutionId: constitution.constitutionId,
+            constitutionVersionId: constitution.versionId,
+            constitutionVersion: constitution.version,
+            promptStrategySummary: constitution.promptStrategySummary,
+          }
+        : {}),
     };
   });
 }
@@ -185,6 +195,12 @@ export function evaluateAgentRunsMock(
       scores,
       ...breakdown,
       passed,
+      ...(run.constitutionVersion
+        ? {
+            constitutionVersion: run.constitutionVersion,
+            constitutionVersionId: run.constitutionVersionId,
+          }
+        : {}),
     };
   });
 }

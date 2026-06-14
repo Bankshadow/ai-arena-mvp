@@ -3,9 +3,31 @@ import type { AgentRun, Evaluation } from "@/lib/tournament/types";
 type Props = {
   runs: AgentRun[];
   evaluations: Evaluation[];
+  agentModels?: Record<string, string>;
 };
 
-export function ActiveBattlePanel({ runs, evaluations }: Props) {
+function modelBadge(agentId: string, modelUsed: string, agentModels?: Record<string, string>) {
+  const routed = agentModels?.[agentId];
+  if (routed) {
+    return (
+      <span className="mt-1 inline-block rounded bg-violet-500/15 px-1.5 py-0.5 font-mono text-[10px] text-violet-300">
+        {routed}
+      </span>
+    );
+  }
+  return <p className="text-xs text-zinc-500">{modelUsed}</p>;
+}
+
+function constitutionBadge(run: AgentRun) {
+  if (!run.constitutionVersion) return null;
+  return (
+    <span className="mt-1 inline-block rounded border border-cyan-500/30 bg-cyan-500/10 px-1.5 py-0.5 font-mono text-[10px] text-cyan-300">
+      {run.constitutionVersion}
+    </span>
+  );
+}
+
+export function ActiveBattlePanel({ runs, evaluations, agentModels }: Props) {
   const evalByRun = new Map(evaluations.map((e) => [e.runId, e]));
 
   return (
@@ -40,7 +62,10 @@ export function ActiveBattlePanel({ runs, evaluations }: Props) {
                   <tr key={run.id} className="border-t border-white/5 hover:bg-white/[0.02]">
                     <td className="px-4 py-3">
                       <p className="font-medium text-zinc-200">{run.agentName}</p>
-                      <p className="text-xs text-zinc-500">{run.modelUsed}</p>
+                      <div className="flex flex-wrap gap-1">
+                        {modelBadge(run.agentId, run.modelUsed, agentModels)}
+                        {constitutionBadge(run)}
+                      </div>
                     </td>
                     <td className="px-4 py-3">
                       {live ? (

@@ -54,6 +54,7 @@ export type Tournament = {
   id: string;
   round: number;
   phase: TournamentPhase;
+  tournamentType?: import("@/lib/constitution/types").TournamentType;
   startedAt: string | null;
   completedAt: string | null;
   paused: boolean;
@@ -77,6 +78,11 @@ export type AgentRun = {
   workflowSteps: number;
   outputPreview: string;
   fullOutput: string;
+  /** Agent constitution version used for this run */
+  constitutionId?: string;
+  constitutionVersionId?: string;
+  constitutionVersion?: string;
+  promptStrategySummary?: string;
 };
 
 export type EvaluationScores = {
@@ -112,6 +118,8 @@ export type Evaluation = {
   penaltyTotal: number;
   totalScore: number;
   passed: boolean;
+  constitutionVersion?: string;
+  constitutionVersionId?: string;
 };
 
 export type LeaderboardEntry = {
@@ -141,6 +149,11 @@ export type MarketplaceCandidate = {
   suggestedPriceUsd: number;
   status: "seed" | "review" | "listed";
   createdAt: string;
+  /** Constitution marketplace extension */
+  itemType?: import("@/lib/constitution/types").MarketplaceConstitutionItemType;
+  constitutionId?: string;
+  constitutionVersion?: string;
+  promptStrategySummary?: string;
 };
 
 export type TournamentEventType =
@@ -173,6 +186,9 @@ export type TournamentState = {
   leaderboard: LeaderboardEntry[];
   history: TournamentEvent[];
   marketplace: MarketplaceCandidate[];
+  routing?: import("@/lib/tournament/routing/types").TournamentRoutingMeta;
+  constitution?: import("@/lib/constitution/types").TournamentConstitutionMeta;
+  memory?: import("@/lib/memory/types").TournamentMemoryMeta;
 };
 
 export type TournamentLoopResult = TournamentState;

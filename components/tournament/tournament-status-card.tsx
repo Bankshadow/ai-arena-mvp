@@ -1,6 +1,10 @@
 import type { Tournament, TournamentPhase } from "@/lib/tournament/types";
 import type { TournamentMode } from "@/lib/tournament/engine";
 import { getLoopIntervalMs } from "@/lib/tournament/engine";
+import {
+  RUNTIME_MODE_LABELS,
+  type TournamentRuntimeMode,
+} from "@/lib/tournament/routing/types";
 
 const PHASE_LABELS: Record<TournamentPhase, string> = {
   idle: "Standby",
@@ -18,6 +22,7 @@ type Props = {
   countdownSec: number | null;
   persistMessage: string | null;
   engineMode: TournamentMode;
+  runtimeMode?: TournamentRuntimeMode;
   supabaseConfigured: boolean;
   supabaseTableReady: boolean;
   supabaseHint: string | null;
@@ -29,6 +34,7 @@ export function TournamentStatusCard({
   countdownSec,
   persistMessage,
   engineMode,
+  runtimeMode = "mock",
   supabaseConfigured,
   supabaseTableReady,
   supabaseHint,
@@ -61,12 +67,21 @@ export function TournamentStatusCard({
             </span>
             <span
               className={`rounded-full border px-3 py-1 text-xs font-medium ${
-                engineMode === "live"
-                  ? "border-cyan-500/40 bg-cyan-500/10 text-cyan-200"
-                  : "border-white/10 bg-white/5 text-zinc-400"
+                runtimeMode === "mock"
+                  ? "border-white/10 bg-white/5 text-zinc-400"
+                  : "border-cyan-500/40 bg-cyan-500/10 text-cyan-200"
               }`}
             >
-              {engineMode === "live" ? "Live LLM" : "Mock mode"}
+              {RUNTIME_MODE_LABELS[runtimeMode]}
+            </span>
+            <span
+              className={`rounded-full border px-3 py-1 text-xs font-medium ${
+                engineMode === "live"
+                  ? "border-violet-500/40 bg-violet-500/10 text-violet-300"
+                  : "border-white/10 bg-white/5 text-zinc-500"
+              }`}
+            >
+              {engineMode === "live" ? "API active" : "Offline"}
             </span>
             <span
               className={`rounded-full border px-3 py-1 text-xs ${

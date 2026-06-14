@@ -12,6 +12,14 @@ import { LiveLeaderboard } from "@/components/tournament/live-leaderboard";
 import { MarketplaceSeedPanel } from "@/components/tournament/marketplace-seed-panel";
 import { SelectedChallengeCard } from "@/components/tournament/selected-challenge-card";
 import { TournamentHistory } from "@/components/tournament/tournament-history";
+import { ProviderStatusCards } from "@/components/tournament/routing/provider-status-cards";
+import { ConstitutionTournamentPanel } from "@/components/tournament/constitution-tournament-panel";
+import { MemoryTournamentPanel } from "@/components/tournament/memory-tournament-panel";
+import { useMemory } from "@/components/memory/memory-provider";
+import type { MemoryKnowledgeBase } from "@/lib/memory/store";
+import { runMemoryCompilePipeline } from "@/lib/memory/pipeline";
+import { RoutingDashboard } from "@/components/tournament/routing/routing-dashboard";
+import { RuntimeModeSelector } from "@/components/tournament/routing/runtime-mode-selector";
 import { TournamentStatusCard } from "@/components/tournament/tournament-status-card";
 import { Nav } from "@/components/Nav";
 import {
@@ -21,6 +29,9 @@ import {
   type LoopStep,
   type TournamentMode,
 } from "@/lib/tournament/engine";
+import { DEFAULT_RUNTIME_MODE, type TournamentRuntimeMode } from "@/lib/tournament/routing/types";
+import type { ProviderStatus } from "@/lib/tournament/routing/types";
+import type { GuardAssessment } from "@/lib/tournament/routing/types";
 import type { TournamentEvent, TournamentState } from "@/lib/tournament/types";
 import { upsertLocalTournamentRound } from "@/lib/tournament/local-storage";
 import {
@@ -30,21 +41,32 @@ import {
 
 type EngineStatus = {
   llmAvailable: boolean;
+  groqAvailable: boolean;
   supabaseConfigured: boolean;
   supabaseTableReady: boolean;
   supabaseCanSave: boolean;
   supabaseError: string | null;
   supabaseHint: string | null;
+  providers?: ProviderStatus[];
+  groqRateLimit?: {
+    requestsToday: number;
+    tokensToday: number;
+    requestsPerDayLimit: number | null;
+  };
+  guardPreview?: GuardAssessment;
 };
 
 export function TournamentView() {
+  const { mergeKb } = useMemory();
   const [state, setState] = useState<TournamentState>(() => createInitialTournamentState());
   const [busy, setBusy] = useState(false);
   const [countdownSec, setCountdownSec] = useState<number | null>(null);
   const [persistMessage, setPersistMessage] = useState<string | null>(null);
   const [engineMode, setEngineMode] = useState<TournamentMode>("mock");
+  const [runtimeMode, setRuntimeMode] = useState<TournamentRuntimeMode>(DEFAULT_RUNTIME_MODE);
   const [engineStatus, setEngineStatus] = useState<EngineStatus>({
     llmAvailable: false,
+    groqAvailable: false,
     supabaseConfigured: false,
     supabaseTableReady: false,
     supabaseCanSave: false,
@@ -52,47 +74,63 @@ export function TournamentView() {
     supabaseHint: null,
   });
   const stateRef = useRef(state);
+  const runtimeModeRef = useRef(runtimeMode);
   const nextRunRef = useRef<number | null>(null);
 
   stateRef.current = state;
+  runtimeModeRef.current = runtimeMode;
 
   useEffect(() => {
     fetch("/api/tournament/status")
       .then((r) => r.json())
       .then((data: EngineStatus) => {
         setEngineStatus(data);
-        if (data.llmAvailable) setEngineMode("live");
       })
       .catch(() => {});
   }, []);
 
-  const applyLoopResult = useCallback((result: TournamentState, mode?: TournamentMode) => {
-    setState(result);
-    if (mode) setEngineMode(mode);
-    nextRunRef.current = Date.now() + getLoopIntervalMs();
-  }, []);
+  const applyLoopResult = useCallback(
+    (result: TournamentState, mode?: TournamentMode, label?: TournamentRuntimeMode) => {
+      setState(result);
+      if (mode) setEngineMode(mode);
+      if (label) setRuntimeMode(label);
+      if (result.routing?.runtimeMode) setRuntimeMode(result.routing.runtimeMode);
+      nextRunRef.current = Date.now() + getLoopIntervalMs();
+    },
+    [],
+  );
 
   const runStepViaApi = useCallback(async (step: LoopStep): Promise<boolean> => {
     const res = await fetch("/api/tournament/run", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ state: stateRef.current, step }),
+      body: JSON.stringify({
+        state: stateRef.current,
+        step,
+        runtimeMode: runtimeModeRef.current,
+      }),
     });
 
     if (!res.ok) return false;
 
     const data = (await res.json()) as TournamentState & {
       mode?: TournamentMode;
+      engineLabel?: TournamentRuntimeMode;
       savedRoundId?: string | null;
       persistError?: string | null;
+      memoryKb?: Partial<MemoryKnowledgeBase>;
     };
     const nextState: TournamentState = {
       tournament: data.tournament,
       leaderboard: data.leaderboard,
       history: data.history,
       marketplace: data.marketplace,
+      routing: data.routing,
+      constitution: data.constitution,
+      memory: data.memory,
     };
-    applyLoopResult(nextState, data.mode);
+    if (data.memoryKb) mergeKb(data.memoryKb);
+    applyLoopResult(nextState, data.mode, data.engineLabel ?? runtimeModeRef.current);
 
     if (shouldAutoSaveTournament(nextState)) {
       const mode = data.mode ?? "mock";
@@ -114,7 +152,7 @@ export function TournamentView() {
       }
     }
     return true;
-  }, [applyLoopResult]);
+  }, [applyLoopResult, mergeKb]);
 
   const runStep = useCallback(
     async (step: LoopStep) => {
@@ -124,6 +162,10 @@ export function TournamentView() {
         if (!ok) {
           setState((prev) => {
             const next = runTournamentLoop(prev, step);
+            if (next.memory?.compiled_at) {
+              const { knowledgeBase } = runMemoryCompilePipeline(next);
+              mergeKb(knowledgeBase);
+            }
             if (shouldAutoSaveTournament(next)) {
               const record = buildSavedTournamentRecord(next, "mock");
               upsertLocalTournamentRound(record);
@@ -137,6 +179,10 @@ export function TournamentView() {
       } catch {
         setState((prev) => {
           const next = runTournamentLoop(prev, step);
+          if (next.memory?.compiled_at) {
+            const { knowledgeBase } = runMemoryCompilePipeline(next);
+            mergeKb(knowledgeBase);
+          }
           if (shouldAutoSaveTournament(next)) {
             const record = buildSavedTournamentRecord(next, "mock");
             upsertLocalTournamentRound(record);
@@ -150,7 +196,7 @@ export function TournamentView() {
         setBusy(false);
       }
     },
-    [runStepViaApi],
+    [runStepViaApi, mergeKb],
   );
 
   const appendEvent = useCallback((ev: TournamentEvent) => {
@@ -200,8 +246,9 @@ export function TournamentView() {
             <h1 className="mt-2 text-3xl font-semibold sm:text-4xl">Tournament Engine</h1>
             <p className="mt-2 max-w-2xl text-sm text-zinc-400">
               AI agents generate challenges, compete, get judged, update the leaderboard, and seed
-              the marketplace — {engineMode === "live" ? "live LLM" : "mock"} loop every 5 minutes.
-              Completed rounds auto-save.
+              the marketplace —{" "}
+              <span className="text-violet-300">{runtimeMode.replace(/_/g, " ")}</span> loop every
+              5 minutes. Completed rounds auto-save.
             </p>
           </div>
           <Link
@@ -219,6 +266,7 @@ export function TournamentView() {
             countdownSec={countdownSec}
             persistMessage={persistMessage}
             engineMode={engineMode}
+            runtimeMode={runtimeMode}
             supabaseConfigured={engineStatus.supabaseConfigured}
             supabaseTableReady={engineStatus.supabaseTableReady}
             supabaseHint={engineStatus.supabaseHint}
@@ -292,6 +340,44 @@ export function TournamentView() {
             }}
           />
 
+          <RuntimeModeSelector
+            value={runtimeMode}
+            groqAvailable={engineStatus.groqAvailable}
+            disabled={busy}
+            onChange={(mode) => {
+              setRuntimeMode(mode);
+              setState((s) => ({
+                ...s,
+                routing: {
+                  runtimeMode: mode,
+                  guard: s.routing?.guard ?? null,
+                  routingTimeline: s.routing?.routingTimeline ?? [],
+                  providerUsage: s.routing?.providerUsage ?? [],
+                  costSavedEstimateUsd: s.routing?.costSavedEstimateUsd ?? 0,
+                  agentModels: s.routing?.agentModels ?? {},
+                },
+              }));
+            }}
+          />
+
+          <ProviderStatusCards
+            providers={engineStatus.providers ?? []}
+            groqRateLimit={engineStatus.groqRateLimit}
+          />
+
+          <RoutingDashboard routing={state.routing} />
+
+          <ConstitutionTournamentPanel
+            constitution={state.constitution}
+            activeRuns={state.tournament.activeRuns}
+            evaluations={state.tournament.evaluations}
+            onPromoteMarketplace={() => {
+              setPersistMessage("Constitution marked as marketplace candidate (mock — local only)");
+            }}
+          />
+
+          <MemoryTournamentPanel memory={state.memory} />
+
           <div className="grid gap-6 lg:grid-cols-2">
             <ChallengeGeneratorPanel
               ideas={state.tournament.challengeIdeas}
@@ -303,6 +389,7 @@ export function TournamentView() {
           <ActiveBattlePanel
             runs={state.tournament.activeRuns}
             evaluations={state.tournament.evaluations}
+            agentModels={state.routing?.agentModels}
           />
 
           <div className="grid gap-6 xl:grid-cols-2">
@@ -315,7 +402,7 @@ export function TournamentView() {
 
           <div className="grid gap-6 xl:grid-cols-2">
             <TournamentHistory events={state.history} />
-            <MarketplaceSeedPanel candidates={state.marketplace} />
+            <MarketplaceSeedPanel state={state} />
           </div>
         </div>
       </main>

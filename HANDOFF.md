@@ -1,8 +1,10 @@
 # AI ARENA — Handoff Log
 
-Date: 2026-06-14 | Prepared for Cursor / Claude | **Last updated: 2026-06-14 (Phase A–D complete + Supabase CLI + E2E)**
+Date: 2026-06-14 | Prepared for Cursor / Claude | **Last updated: 2026-06-14 (Tournament Engine V2 architecture)**
 
 Production: **https://ai-arena-drab.vercel.app** · Dev: **http://localhost:3005** · Repo: `Bankshadow/ai-arena-mvp`
+
+**Architecture doc (Tournament V2):** [`docs/TOURNAMENT-ENGINE-V2.md`](docs/TOURNAMENT-ENGINE-V2.md)
 
 ---
 
@@ -38,7 +40,11 @@ AI Agent personas seed the leaderboard; humans compete via Arena, Submit, Battle
 | **D** | MVP20–21 | `/workflows/[slug]` clone prompt + export bundle | ✅ Done |
 | Infra | Supabase CLI | `supabase/migrations/` + `npm run supabase:push` | ✅ Done |
 | Infra | E2E | `npm run e2e` — 19/19 checks (local) | ✅ Done |
-| **E** | MVP22–24 | Cost guardrails, provider abstraction, live toggle | ⏳ Not started |
+| **T-V2** | T-MVP1 | Mock tournament loop | ✅ Done |
+| **T-V2** | T-MVP2 | Groq-powered agent loop | ⏳ Designed — see TOURNAMENT-ENGINE-V2 |
+| **T-V2** | T-MVP3 | Hybrid judge (Groq + Claude/GPT final) | ⏳ Designed |
+| **T-V2** | T-MVP4 | Benchmark + marketplace polish | ⏳ Partial |
+| **T-V2** | T-MVP5 | Enterprise tournaments + audit | ⏳ Partial |
 
 ---
 
@@ -52,7 +58,10 @@ AI Agent personas seed the leaderboard; humans compete via Arena, Submit, Battle
 | `SUPABASE_DB_PASSWORD` | For `supabase:push` | CLI migration sync |
 | `SUPABASE_PROJECT_REF` | Optional | Parsed from URL if omitted |
 | `ADMIN_USERNAME` / `ADMIN_PASSWORD` | For `/admin` | HTTP Basic Auth |
-| `ANTHROPIC_API_KEY` | Optional | Live LLM; omit = mock mode |
+| `ANTHROPIC_API_KEY` | Optional | Live LLM (final judge, premium tasks); omit = mock |
+| `GROQ_API_KEY` | Optional (T-MVP2+) | Groq-first tournament loops (free tier, fast) |
+| `OPENAI_API_KEY` | Optional | GPT final judge / benchmark fallback |
+| `TOURNAMENT_DEFAULT_RUNTIME_MODE` | Optional | `free` \| `cheap` \| `quality` \| `enterprise` |
 
 Template: `env.import.example` → copy to `.env.local`  
 Vercel: `vercel.env.example` → import in dashboard, then redeploy.
@@ -77,6 +86,7 @@ Migrations applied (2026-06-14):
 | `20250102000000_tournament_rounds.sql` | Tournament snapshots |
 | `20250103000000_marketplace_listings.sql` | Marketplace |
 | `20250104000000_rls_v2_submissions.sql` | Tighter RLS |
+| `20250201000000_model_provider_routing.sql` | **T-V2** providers, profiles, usage logs (not applied until T-MVP2) |
 
 Legacy snapshots (`schema.sql`, `rls-v2.sql`, …) are reference only. See `supabase/README.md`.
 
@@ -190,14 +200,15 @@ supabase/migrations/         — Source of truth for schema
 
 ---
 
-## Next steps (Phase E — suggested)
+## Next steps (Tournament V2 — priority)
 
-1. **MVP22** — Cost guardrails (max rounds/day, budget cap)
-2. **MVP23** — Provider abstraction (Anthropic + Ollama fallback)
-3. **MVP24** — Admin live/mock toggle without redeploy
-4. Marketplace dedup + review workflow (`seed` → `review` → `listed`)
-5. i18n for new pages (account, marketplace, tournament)
-6. Playwright browser E2E for sessionStorage bridge
+1. **T-MVP2** — Implement Groq adapter + router + `loop-service.ts` (Cursor prompt in `docs/TOURNAMENT-ENGINE-V2.md` §10)
+2. Run migration `20250201000000_model_provider_routing.sql` via `npm run supabase:push`
+3. **T-MVP3** — Hybrid final judge in Quality mode
+4. Tournament UI: Runtime Mode selector, Groq usage card, rate limit badge
+5. Marketplace dedup + review workflow (`seed` → `review` → `listed`)
+6. i18n for new tournament UI
+7. Playwright E2E for sessionStorage bridge
 
 ---
 

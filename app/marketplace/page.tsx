@@ -1,10 +1,10 @@
-import { MarketplaceListView } from "@/components/marketplace/marketplace-list-view";
+import { MarketplaceHubView } from "@/components/marketplace/marketplace-hub-view";
 
 export const metadata = {
   title: "Marketplace | AI ARENA",
-  description: "Tournament winners promoted to reusable workflow listings.",
+  description: "Tournament-tested AI workflow components — browse, stack, and export.",
 };
 
 export default function MarketplacePage() {
-  return <MarketplaceListView />;
+  return <MarketplaceHubView />;
 }
