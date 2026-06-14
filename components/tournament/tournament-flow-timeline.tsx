@@ -6,7 +6,7 @@ import { useTranslations } from "@/components/i18n/locale-provider";
 import { translateFlowStepStatus } from "@/lib/i18n/helpers";
 import type { TournamentFlowStep } from "@/lib/tournament/mission-control-demo";
 
-type Props = { steps: TournamentFlowStep[] };
+type Props = { steps: TournamentFlowStep[]; compact?: boolean };
 
 const STATUS_ICON = {
   complete: CheckCircle2,
@@ -20,16 +20,26 @@ const STATUS_STYLE = {
   pending: "text-zinc-600 border-white/10 bg-black/20",
 };
 
-export function TournamentFlowTimeline({ steps }: Props) {
+export function TournamentFlowTimeline({ steps, compact }: Props) {
   const t = useTranslations();
   const ft = t.tournament.flowTimeline;
 
   return (
-    <section className="glass-card overflow-hidden rounded-2xl border border-violet-500/15">
-      <div className="border-b border-white/10 bg-gradient-to-r from-violet-500/10 to-transparent px-5 py-4">
-        <h3 className="text-sm font-semibold uppercase tracking-wider text-zinc-400">{ft.title}</h3>
-        <p className="mt-1 text-xs text-zinc-500">{ft.subtitle}</p>
-      </div>
+    <section
+      className={
+        compact
+          ? ""
+          : "glass-card overflow-hidden rounded-2xl border border-violet-500/15"
+      }
+    >
+      {!compact && (
+        <div className="border-b border-white/10 bg-gradient-to-r from-violet-500/10 to-transparent px-5 py-4">
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-zinc-400">
+            2 · {ft.title}
+          </h3>
+          <p className="mt-1 text-xs text-zinc-500">{ft.subtitle}</p>
+        </div>
+      )}
 
       <ol className="divide-y divide-white/5">
         {steps.map((step, index) => {

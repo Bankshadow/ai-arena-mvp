@@ -10,16 +10,19 @@ import {
 type Props = {
   entries: LeaderboardEntry[];
   viewMode?: TournamentViewMode;
+  embedded?: boolean;
 };
 
-export function LiveLeaderboard({ entries, viewMode = "completed_sample" }: Props) {
+export function LiveLeaderboard({ entries, viewMode = "completed_sample", embedded }: Props) {
   return (
-    <section className="glass-card overflow-hidden rounded-2xl">
-      <div className="border-b border-white/10 bg-gradient-to-r from-emerald-500/10 to-transparent px-5 py-4">
-        <h3 className="text-sm font-semibold uppercase tracking-wider text-zinc-400">
-          5 · {VIEW_MODE_LEADERBOARD_TITLE[viewMode]}
-        </h3>
-      </div>
+    <section className={embedded ? "" : "glass-card overflow-hidden rounded-2xl"}>
+      {!embedded && (
+        <div className="border-b border-white/10 bg-gradient-to-r from-emerald-500/10 to-transparent px-5 py-4">
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-zinc-400">
+            8 · {VIEW_MODE_LEADERBOARD_TITLE[viewMode]}
+          </h3>
+        </div>
+      )}
       {entries.length === 0 ? (
         <p className="p-8 text-center text-sm text-zinc-600">No scores yet — run a tournament loop.</p>
       ) : (

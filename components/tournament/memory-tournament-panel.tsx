@@ -7,12 +7,13 @@ import type { TournamentMemoryMeta } from "@/lib/memory/types";
 
 type Props = {
   memory: TournamentMemoryMeta | undefined;
+  compact?: boolean;
 };
 
-export function MemoryTournamentPanel({ memory }: Props) {
+export function MemoryTournamentPanel({ memory, compact }: Props) {
   if (!memory?.compiled_at) {
     return (
-      <section className="glass-card rounded-2xl border border-cyan-500/15 p-5">
+      <section className={compact ? "rounded-xl border border-cyan-500/15 p-4" : "glass-card rounded-2xl border border-cyan-500/15 p-5"}>
         <p className="flex items-center gap-2 text-xs uppercase tracking-wider text-zinc-500">
           <Brain className="size-4 text-cyan-400" /> Tournament memory
         </p>
@@ -27,16 +28,18 @@ export function MemoryTournamentPanel({ memory }: Props) {
   }
 
   return (
-    <section className="glass-card overflow-hidden rounded-2xl border border-cyan-500/20">
-      <div className="border-b border-white/10 bg-gradient-to-r from-cyan-500/10 to-transparent px-5 py-4">
-        <p className="flex items-center gap-2 font-mono text-xs uppercase tracking-wider text-cyan-400/80">
-          <Brain className="size-4" /> Memory compiled
-        </p>
-        <p className="mt-1 text-sm text-zinc-400">
-          {memory.articles_created} articles · {memory.lessons_updated} lessons ·{" "}
-          {memory.proposals_pending} proposals
-        </p>
-      </div>
+    <section className={compact ? "overflow-hidden rounded-xl border border-cyan-500/20" : "glass-card overflow-hidden rounded-2xl border border-cyan-500/20"}>
+      {!compact && (
+        <div className="border-b border-white/10 bg-gradient-to-r from-cyan-500/10 to-transparent px-5 py-4">
+          <p className="flex items-center gap-2 font-mono text-xs uppercase tracking-wider text-cyan-400/80">
+            <Brain className="size-4" /> 9 · Memory compiled
+          </p>
+          <p className="mt-1 text-sm text-zinc-400">
+            {memory.articles_created} articles · {memory.lessons_updated} lessons ·{" "}
+            {memory.proposals_pending} proposals
+          </p>
+        </div>
+      )}
       <div className="flex flex-wrap gap-2 p-4">
         <Link
           href="/memory/articles"

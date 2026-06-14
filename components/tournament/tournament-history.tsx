@@ -8,9 +8,9 @@ const TABS = ["All", "Battles", "Leaderboard", "Marketplace", "System"] as const
 
 type Tab = (typeof TABS)[number];
 
-type Props = { events: TournamentEvent[] };
+type Props = { events: TournamentEvent[]; compact?: boolean };
 
-export function TournamentHistory({ events }: Props) {
+export function TournamentHistory({ events, compact }: Props) {
   const [tab, setTab] = useState<Tab>("All");
 
   const filtered = events.filter((e) => {
@@ -23,12 +23,17 @@ export function TournamentHistory({ events }: Props) {
   });
 
   return (
-    <section className="glass-card overflow-hidden rounded-2xl">
-      <div className="border-b border-white/10 px-4 py-3">
-        <h3 className="text-sm font-semibold uppercase tracking-wider text-zinc-400">
-          6 · Tournament history
-        </h3>
-        <div className="mt-3 flex gap-1 overflow-x-auto pb-1">
+    <section className={compact ? "overflow-hidden rounded-xl border border-white/10" : "glass-card overflow-hidden rounded-2xl"}>
+      {!compact && (
+        <div className="border-b border-white/10 px-4 py-3">
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-zinc-400">
+            11 · Replay &amp; history
+          </h3>
+        </div>
+      )}
+      <div className={`${compact ? "px-3 py-2" : "border-b border-white/10 px-4 py-3"}`}>
+        {!compact && null}
+        <div className="flex gap-1 overflow-x-auto pb-1">
           {TABS.map((t) => (
             <button
               key={t}

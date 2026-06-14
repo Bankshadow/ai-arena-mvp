@@ -26,12 +26,15 @@ type Props = {
   routing: TournamentRoutingMeta | undefined;
   groqAvailable?: boolean;
   premiumAvailable?: boolean;
+  /** Sidebar / ops rail — force single-column compact layout */
+  narrow?: boolean;
 };
 
 export function MissionControlRoutingSection({
   routing,
   groqAvailable,
   premiumAvailable,
+  narrow,
 }: Props) {
   const t = useTranslations();
   const tr = t.tournament.routing;
@@ -71,31 +74,34 @@ export function MissionControlRoutingSection({
       : 0);
 
   return (
-    <div className="space-y-6">
-      <section className="glass-card rounded-2xl p-5">
-        <h3 className="text-sm font-semibold uppercase tracking-wider text-zinc-400">
+    <div className={`space-y-4 ${narrow ? "min-w-0" : "space-y-6"}`}>
+      <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-cyan-400/70">
+        Provider &amp; routing
+      </p>
+      <section className={`rounded-xl border border-white/10 bg-black/20 ${narrow ? "p-3" : "glass-card rounded-2xl p-5"}`}>
+        <h3 className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
           {tr.providerStatus}
         </h3>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className={`mt-3 grid gap-2 ${narrow ? "grid-cols-1" : "sm:grid-cols-2 xl:grid-cols-4"}`}>
           {providers.map((p) => {
             const status =
               p.id === "groq" && groqAvailable ? ("configurable" as const) : p.status;
             return (
-              <div key={p.id} className={`rounded-xl border p-4 ${STATUS_STYLE[status]}`}>
-                <div className="flex items-center justify-between gap-2">
-                  <span className="font-medium">{p.label}</span>
-                  <span className="text-[10px] uppercase">
+              <div key={p.id} className={`min-w-0 rounded-lg border p-3 ${STATUS_STYLE[status]}`}>
+                <div className="flex items-start justify-between gap-2">
+                  <span className="text-xs font-medium leading-tight">{p.label}</span>
+                  <span className="shrink-0 text-[9px] uppercase">
                     {translateProviderCardStatus(status, t)}
                   </span>
                 </div>
-                <p className="mt-2 text-xs opacity-80">{p.message}</p>
+                <p className="mt-1.5 text-[10px] leading-snug opacity-80">{p.message}</p>
               </div>
             );
           })}
         </div>
 
         {guard && (
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <div className={`mt-3 grid gap-2 ${narrow ? "grid-cols-2" : "sm:grid-cols-2 lg:grid-cols-5"}`}>
             <MiniStat label={tr.stats.estApiCalls} value={String(guard.apiCallCount)} />
             <MiniStat
               label={tr.stats.estTokens}
@@ -115,7 +121,7 @@ export function MissionControlRoutingSection({
         )}
       </section>
 
-      <RoutingDashboard routing={routing} />
+      <RoutingDashboard routing={routing} narrow={narrow} />
     </div>
   );
 }
@@ -130,9 +136,9 @@ function MiniStat({
   highlight?: boolean;
 }) {
   return (
-    <div className="rounded-lg border border-white/10 bg-black/20 p-3">
-      <p className="text-[10px] uppercase text-zinc-500">{label}</p>
-      <p className={`mt-1 font-mono text-sm ${highlight ? "text-amber-300" : "text-zinc-200"}`}>
+    <div className="min-w-0 rounded-lg border border-white/10 bg-black/20 p-2">
+      <p className="truncate text-[9px] uppercase text-zinc-500">{label}</p>
+      <p className={`mt-0.5 truncate font-mono text-xs ${highlight ? "text-amber-300" : "text-zinc-200"}`}>
         {value}
       </p>
     </div>

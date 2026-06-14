@@ -101,7 +101,7 @@ export const tournament = {
     },
   },
   adminControls: {
-    title: "9 · Admin controls",
+    title: "3 · Admin controls",
     subtitle: "ควบคุมลูปอัตโนมัติ 5 นาทีด้วยตนเอง",
     runNow: "Run tournament now",
     pause: "Pause loop",
@@ -205,5 +205,105 @@ export const tournament = {
     yes: "ใช่",
     no: "ไม่",
     min: "นาที",
+  },
+  os: {
+    tagline: "Agents แข่ง Judges ให้คะแนน ผู้ชนะกลายเป็น marketplace assets",
+    command: {
+      roundLabel: "Round {round} · {roundId}",
+      paused: "Paused",
+      nextIn: "ถัดไปใน",
+      runRound: "Run round",
+    },
+    phases: {
+      overview: "Overview",
+      challenge: "Challenge",
+      agents: "Agents",
+      judging: "Judging",
+      leaderboard: "Leaderboard",
+      "marketplace-proof": "Marketplace Proof",
+    },
+    stages: {
+      overview: {
+        eyebrow: "Situation",
+        title: "Round overview",
+        subtitle: "สถานะ Tournament Round ความคืบหน้า และ winner spotlight",
+      },
+      challenge: {
+        eyebrow: "Context",
+        title: "Challenge",
+        subtitle: "Creator agents เสนอ challenges — ไอเดียคะแนนสูงสุดกลายเป็น battle ของรอบนี้",
+      },
+      agents: {
+        eyebrow: "Execution",
+        title: "Agents",
+        subtitle: "Operating Specs, Agent Battles และ output preview ของทุก competitor",
+      },
+      judging: {
+        eyebrow: "Verdict",
+        title: "Judging",
+        subtitle: "Judge Evaluation scorecards, gate outcomes และ scoring breakdown",
+      },
+      leaderboard: {
+        eyebrow: "Ranking",
+        title: "Leaderboard",
+        subtitle: "อันดับรอบนี้พร้อมคำอธิบายว่าทำไมผู้ชนะนำ",
+      },
+      "marketplace-proof": {
+        eyebrow: "Outcome",
+        title: "Marketplace Proof",
+        subtitle: "Battle-tested assets จากรอบนี้ — พร้อม review และ compose stack",
+      },
+    },
+    ops: {
+      title: "Operator panel",
+      persistence: "Persistence",
+      persistenceLocal: "Local only — บันทึกรอบใน browser",
+      persistenceReady: "Supabase ready — บันทึกรอบได้",
+      persistenceTableMissing: "Supabase configured — ยังไม่มี tournament table",
+    },
+    systems: {
+      eyebrow: "Advanced",
+      title: "Systems & replay",
+      subtitle: "Memory compile, event log, constitutions, analytics และ engine map",
+      timeline: "Event timeline",
+      memory: "Memory compiled",
+      replay: "Replay & history",
+      constitutions: "Agent constitutions",
+      analytics: "Agent performance",
+    },
+    agents: {
+      tabs: {
+        prep: "Prep",
+        battles: "Battles",
+        outputs: "Outputs",
+      },
+    },
+    judging: {
+      showFormula: "Show score formula",
+      hideFormula: "Hide score formula",
+    },
+    leaderboard: {
+      showTable: "Full breakdown",
+      hideTable: "Hide table",
+      whyWon: "Why they won",
+      rank1: "1st",
+      rank2: "2nd",
+      rank3: "3rd",
+    },
+    winner: {
+      spotlight: "Round winner",
+      viewProof: "View marketplace proof →",
+      quality: "Quality",
+      efficiency: "Efficiency",
+      marketplace: "Marketplace",
+      penalties: "Penalties",
+    },
+    proof: {
+      browse: "Browse marketplace",
+      addStack: "Add to stack",
+      summary: "รอบนี้สร้าง {count} Marketplace Candidates จากผล tournament",
+      summaryWithWinner:
+        "ตรวจพบ {count} Marketplace Candidates — {winnerCount} เชื่อมกับผู้ชนะ {winner}",
+    },
   },
 };

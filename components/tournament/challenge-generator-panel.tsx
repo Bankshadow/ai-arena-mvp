@@ -20,7 +20,7 @@ export function ChallengeGeneratorPanel({
   return (
     <section className="glass-card rounded-2xl p-5">
       <h3 className="text-sm font-semibold uppercase tracking-wider text-zinc-400">
-        2 · Challenge generator
+        3 · Challenge generator
       </h3>
       <p className="mt-1 text-xs text-zinc-500">
         Strategy, Technical, and Growth agents propose ideas each round. Click an idea to preview

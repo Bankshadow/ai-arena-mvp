@@ -102,42 +102,48 @@ export function detectCandidatesFromTournamentState(
 
 /** Map legacy MarketplaceCandidate rows to V2 for display. */
 export function enrichLegacyCandidates(state: TournamentState): MarketplaceCandidateV2[] {
-  const detected = detectCandidatesFromTournamentState(state);
-  if (detected.length > 0) return detected;
+  const mapLegacy = () =>
+    state.marketplace.map((m) => {
+      const p = {
+        win_rate: m.totalScore >= 70 ? 0.55 : 0.35,
+        avg_score: m.totalScore,
+        avg_cost_usd: 0.003,
+        avg_tokens: 2000,
+        avg_latency_ms: 800,
+        best_category: "quality",
+        worst_category: "latency",
+        tournament_runs: m.round + 5,
+        benchmark_history: [{ round: m.round, score: m.totalScore, cost: 0.003 }],
+        recommended_use_cases: ["Executive summary workflows"],
+        last_tournament_at: m.createdAt,
+      };
+      return {
+        id: m.id,
+        component_id:
+          mapAgentToConstitutionComponent(m.agentId)?.id ?? "comp-low-cost-exec-workflow",
+        slug: m.id,
+        type: "workflow_template" as const,
+        title: `${m.agentName} Workflow`,
+        tournament_id: m.tournamentId,
+        round: m.round,
+        agent_id: m.agentId,
+        agent_name: m.agentName,
+        challenge_title: m.challengeTitle,
+        total_score: m.totalScore,
+        marketplace_score: m.marketplaceScore,
+        proof: p,
+        arena_score: computeArenaScore(p),
+        status: m.status,
+        created_at: m.createdAt,
+      };
+    });
 
-  return state.marketplace.map((m) => {
-    const p = {
-      win_rate: m.totalScore >= 70 ? 0.55 : 0.35,
-      avg_score: m.totalScore,
-      avg_cost_usd: 0.003,
-      avg_tokens: 2000,
-      avg_latency_ms: 800,
-      best_category: "quality",
-      worst_category: "latency",
-      tournament_runs: m.round + 5,
-      benchmark_history: [{ round: m.round, score: m.totalScore, cost: 0.003 }],
-      recommended_use_cases: ["Executive summary workflows"],
-      last_tournament_at: m.createdAt,
-    };
-    return {
-      id: m.id,
-      component_id: mapAgentToConstitutionComponent(m.agentId)?.id ?? "comp-low-cost-exec-workflow",
-      slug: m.id,
-      type: "workflow_template" as const,
-      title: `${m.agentName} Workflow`,
-      tournament_id: m.tournamentId,
-      round: m.round,
-      agent_id: m.agentId,
-      agent_name: m.agentName,
-      challenge_title: m.challengeTitle,
-      total_score: m.totalScore,
-      marketplace_score: m.marketplaceScore,
-      proof: p,
-      arena_score: computeArenaScore(p),
-      status: m.status,
-      created_at: m.createdAt,
-    };
-  });
+  const legacy = mapLegacy();
+  if (legacy.length >= 4) return legacy;
+
+  const detected = detectCandidatesFromTournamentState(state);
+  if (detected.length > legacy.length) return detected;
+  return legacy.length > 0 ? legacy : detected;
 }
 
 /** Async — includes persisted candidates from store (admin / post-round). */

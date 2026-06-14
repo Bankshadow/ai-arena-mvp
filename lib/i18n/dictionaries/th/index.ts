@@ -3,6 +3,7 @@ import * as pages from "./pages";
 import { landing } from "./landing";
 import { marketplace } from "./marketplace";
 import { tournament } from "./tournament";
+import { workflow } from "./workflow";
 
 export const th = {
   nav: nav.nav,
@@ -16,4 +17,5 @@ export const th = {
   landing,
   tournament,
   marketplace,
+  workflow,
 };

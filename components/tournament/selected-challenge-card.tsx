@@ -16,7 +16,7 @@ export function SelectedChallengeCard({ challenge, idea, isRoundWinner = true }:
     return (
       <section className="glass-card rounded-2xl p-5">
         <h3 className="text-sm font-semibold uppercase tracking-wider text-zinc-400">
-          3 · Selected challenge
+          4 · Selected challenge
         </h3>
         <p className="mt-6 text-center text-sm text-zinc-600">
           Click a challenge idea on the left to preview details here.

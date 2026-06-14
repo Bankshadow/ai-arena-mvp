@@ -130,34 +130,83 @@ function enrichFailReasons(
   runs: AgentRun[],
   challenge: Challenge,
 ): Evaluation[] {
-  const FAIL_BY_AGENT: Partial<
-    Record<
-      Evaluation["agentId"],
-      { failReason: string; gateFailed: string }
-    >
-  > = {
-    premium: { failReason: "cost cap exceeded", gateFailed: "cost_cap" },
-    rag: { failReason: "quality gate failed", gateFailed: "quality" },
-    "multi-agent": { failReason: "format compliance failed", gateFailed: "format" },
-    fast: { failReason: "missing required section", gateFailed: "format" },
+  type GatePreset = {
+    failReason: string;
+    gateFailed: string;
+    gateOutcome: "below_gate" | "fail";
+    gateFailNote?: string;
+    penaltyTotal?: number;
+  };
+
+  const GATE_BY_AGENT: Partial<Record<Evaluation["agentId"], GatePreset>> = {
+    premium: {
+      failReason: "efficiency gate failed",
+      gateFailed: "efficiency gate failed",
+      gateOutcome: "below_gate",
+      gateFailNote: "High token usage and weak efficiency score.",
+      penaltyTotal: -1,
+    },
+    rag: {
+      failReason: "quality gate failed",
+      gateFailed: "quality gate failed",
+      gateOutcome: "below_gate",
+      penaltyTotal: 0,
+    },
+    "multi-agent": {
+      failReason: "format compliance gate failed",
+      gateFailed: "format compliance gate failed",
+      gateOutcome: "below_gate",
+      penaltyTotal: 0,
+    },
+    fast: {
+      failReason: "missing required section",
+      gateFailed: "missing output",
+      gateOutcome: "fail",
+    },
   };
 
   return evaluations.map((ev) => {
     if (ev.passed) return ev;
     const run = runs.find((r) => r.id === ev.runId);
-    const preset = FAIL_BY_AGENT[ev.agentId];
-    if (preset) return { ...ev, ...preset };
+    const preset = GATE_BY_AGENT[ev.agentId];
+    if (preset) {
+      return {
+        ...ev,
+        ...preset,
+        penaltyTotal: preset.penaltyTotal ?? ev.penaltyTotal,
+      };
+    }
 
     if (run && run.costUsd > challenge.costLimitUsd) {
-      return { ...ev, failReason: "cost cap exceeded", gateFailed: "cost_cap" };
+      return {
+        ...ev,
+        failReason: "cost cap exceeded",
+        gateFailed: "cost cap exceeded",
+        gateOutcome: "fail",
+      };
     }
     if (ev.scores.badFormattingPenalty < 0) {
-      return { ...ev, failReason: "format compliance failed", gateFailed: "format" };
+      return {
+        ...ev,
+        failReason: "format compliance failed",
+        gateFailed: "format compliance gate failed",
+        gateOutcome: "fail",
+      };
     }
     if (run && run.latencyMs > 10000) {
-      return { ...ev, failReason: "latency gate failed", gateFailed: "latency" };
+      return {
+        ...ev,
+        failReason: "latency gate failed",
+        gateFailed: "latency gate failed",
+        gateOutcome: "below_gate",
+      };
     }
-    return { ...ev, failReason: "quality gate failed", gateFailed: "quality" };
+    return {
+      ...ev,
+      failReason: "quality gate failed",
+      gateFailed: "quality gate failed",
+      gateOutcome: "below_gate",
+    };
   });
 }
 
@@ -442,7 +491,7 @@ export function buildFlowTimeline(state: TournamentState): TournamentFlowStep[] 
       label: "Marketplace candidates created",
       status: state.marketplace.length ? "complete" : "pending",
       actor: "Marketplace detector",
-      note: `${state.marketplace.length || DEMO_MARKETPLACE_COUNT} candidates ready`,
+      note: `${Math.max(state.marketplace.length, DEMO_MARKETPLACE_COUNT)} candidates ready`,
     },
   ];
 
@@ -480,7 +529,7 @@ export function enrichMissionControlDemo(state: TournamentState): TournamentStat
   };
 
   const marketplace =
-    state.marketplace.length > 0
+    state.marketplace.length >= DEMO_MARKETPLACE_COUNT
       ? state.marketplace.slice(0, DEMO_MARKETPLACE_COUNT)
       : buildDemoMarketplace(DEMO_ROUND_ID, tournament.round, evaluations);
 

@@ -18,6 +18,7 @@ type Props = {
   activeRuns: AgentRun[];
   evaluations: Evaluation[];
   onPromoteMarketplace?: () => void;
+  compact?: boolean;
 };
 
 export function ConstitutionTournamentPanel({
@@ -25,6 +26,7 @@ export function ConstitutionTournamentPanel({
   activeRuns,
   evaluations,
   onPromoteMarketplace,
+  compact,
 }: Props) {
   const [showDiff, setShowDiff] = useState(false);
 
@@ -53,16 +55,18 @@ export function ConstitutionTournamentPanel({
       : "Standard tournament";
 
   return (
-    <section className="glass-card overflow-hidden rounded-2xl border border-violet-500/25">
-      <div className="border-b border-white/10 bg-gradient-to-r from-violet-500/10 via-transparent to-emerald-500/5 px-5 py-4">
-        <p className="flex items-center gap-2 font-mono text-xs uppercase tracking-wider text-violet-400/80">
-          <BookOpen className="size-4" /> Agent constitutions
-        </p>
-        <h3 className="mt-1 text-lg font-semibold text-white">{tournamentTypeLabel}</h3>
-        <p className="mt-1 text-xs text-zinc-500">
-          Each run stores which operating spec version was active.
-        </p>
-      </div>
+    <section className={compact ? "overflow-hidden rounded-xl border border-violet-500/25" : "glass-card overflow-hidden rounded-2xl border border-violet-500/25"}>
+      {!compact && (
+        <div className="border-b border-white/10 bg-gradient-to-r from-violet-500/10 via-transparent to-emerald-500/5 px-5 py-4">
+          <p className="flex items-center gap-2 font-mono text-xs uppercase tracking-wider text-violet-400/80">
+            <BookOpen className="size-4" /> 12 · Agent constitutions
+          </p>
+          <h3 className="mt-1 text-lg font-semibold text-white">{tournamentTypeLabel}</h3>
+          <p className="mt-1 text-xs text-zinc-500">
+            Each run stores which operating spec version was active.
+          </p>
+        </div>
+      )}
 
       <div className="grid gap-4 p-5 lg:grid-cols-2">
         <div>

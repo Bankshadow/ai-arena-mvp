@@ -8,6 +8,10 @@ import { ComponentProofCard } from "@/components/marketplace/component-proof-car
 import { MarketplaceSemanticSearch } from "@/components/vector/marketplace-semantic-search";
 import { useWorkflowStack } from "@/components/marketplace/stack-provider";
 import { Nav } from "@/components/Nav";
+import { EngineMap } from "@/components/workflow/engine-map";
+import { MarketplacePipeline } from "@/components/workflow/marketplace-pipeline";
+import { ProofStatsBanner } from "@/components/workflow/proof-stats-cards";
+import { WorkflowLoopBanner } from "@/components/workflow/workflow-loop-banner";
 import { fillTemplate } from "@/lib/i18n/helpers";
 import {
   getBestJudgeRubrics,
@@ -80,6 +84,12 @@ export function MarketplaceHubView() {
           {m.title}
         </h1>
         <p className="mt-4 max-w-3xl text-lg text-zinc-400">{m.description}</p>
+
+        <div className="mt-6 space-y-4">
+          <WorkflowLoopBanner />
+          <MarketplacePipeline activeStage={4} />
+          <ProofStatsBanner />
+        </div>
 
         <div className="mt-6 flex flex-wrap items-center gap-2 font-mono text-[11px] text-zinc-500">
           {flowSteps.map((step, i, arr) => (
@@ -172,6 +182,10 @@ export function MarketplaceHubView() {
           viewAllLabel={m.viewAll}
           components={getRecentlyTestedComponents(6)}
         />
+
+        <div className="mt-12">
+          <EngineMap />
+        </div>
       </main>
     </div>
   );

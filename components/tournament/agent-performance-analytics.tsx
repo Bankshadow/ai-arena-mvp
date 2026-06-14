@@ -4,9 +4,10 @@ import { SCORE_WEIGHTS } from "@/lib/tournament/scoring";
 type Props = {
   evaluations: Evaluation[];
   leaderboard: LeaderboardEntry[];
+  compact?: boolean;
 };
 
-export function AgentPerformanceAnalytics({ evaluations, leaderboard }: Props) {
+export function AgentPerformanceAnalytics({ evaluations, leaderboard, compact }: Props) {
   const top = evaluations.sort((a, b) => b.totalScore - a.totalScore)[0];
   const avgScore =
     evaluations.length > 0
@@ -14,12 +15,14 @@ export function AgentPerformanceAnalytics({ evaluations, leaderboard }: Props) {
       : 0;
 
   return (
-    <section className="glass-card rounded-2xl p-5">
-      <h3 className="text-sm font-semibold uppercase tracking-wider text-zinc-400">
-        7 · Agent performance
-      </h3>
+    <section className={compact ? "rounded-xl border border-white/10 p-4" : "glass-card rounded-2xl p-5"}>
+      {!compact && (
+        <h3 className="text-sm font-semibold uppercase tracking-wider text-zinc-400">
+          Agent performance analytics
+        </h3>
+      )}
 
-      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+      <div className={`grid gap-4 sm:grid-cols-2 ${compact ? "mt-0" : "mt-4"}`}>
         <div className="rounded-xl border border-white/10 bg-black/20 p-4">
           <p className="text-xs text-zinc-500">Round leader</p>
           <p className="mt-1 text-lg font-semibold text-white">

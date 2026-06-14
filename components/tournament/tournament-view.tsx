@@ -1,25 +1,27 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Radio } from "lucide-react";
 
-import { AdminControls } from "@/components/tournament/admin-controls";
-import { ActiveBattlePanel } from "@/components/tournament/active-battle-panel";
-import { AgentPerformanceAnalytics } from "@/components/tournament/agent-performance-analytics";
-import { ChallengeGeneratorSection } from "@/components/tournament/challenge-generator-section";
-import { LiveLeaderboard } from "@/components/tournament/live-leaderboard";
-import { MarketplaceSeedPanel } from "@/components/tournament/marketplace-seed-panel";
-import { TournamentHistory } from "@/components/tournament/tournament-history";
-import { ConstitutionTournamentPanel } from "@/components/tournament/constitution-tournament-panel";
-import { MemoryTournamentPanel } from "@/components/tournament/memory-tournament-panel";
+import { TournamentCommandBar } from "@/components/tournament/os/tournament-command-bar";
+import { TournamentOpsRail } from "@/components/tournament/os/tournament-ops-rail";
+import { TournamentPhaseNav } from "@/components/tournament/os/tournament-phase-nav";
+import { TournamentSystemsDrawer } from "@/components/tournament/os/tournament-systems-drawer";
+import { AgentsStage } from "@/components/tournament/os/stages/agents-stage";
+import { ChallengeStage } from "@/components/tournament/os/stages/challenge-stage";
+import { JudgingStage } from "@/components/tournament/os/stages/judging-stage";
+import { LeaderboardStage } from "@/components/tournament/os/stages/leaderboard-stage";
+import { MarketplaceProofStage } from "@/components/tournament/os/stages/marketplace-proof-stage";
+import { OverviewStage } from "@/components/tournament/os/stages/overview-stage";
+import {
+  phaseAnchorId,
+  TOURNAMENT_PHASES,
+  type TournamentPhase,
+} from "@/components/tournament/os/types";
+import { TournamentJoinEvents } from "@/components/tournament/tournament-join-events";
 import { useMemory } from "@/components/memory/memory-provider";
 import type { MemoryKnowledgeBase } from "@/lib/memory/store";
 import { runMemoryCompilePipeline } from "@/lib/memory/pipeline";
-import { TournamentJoinEvents } from "@/components/tournament/tournament-join-events";
-import { TournamentStatusCard } from "@/components/tournament/tournament-status-card";
 import { useTranslations } from "@/components/i18n/locale-provider";
-import { fillTemplate, translateRuntimeMode } from "@/lib/i18n/helpers";
 import { Nav } from "@/components/Nav";
 import {
   createInitialTournamentState,
@@ -29,15 +31,13 @@ import {
   type TournamentMode,
 } from "@/lib/tournament/engine";
 import { enrichLegacyCandidates } from "@/lib/marketplace/candidate-detector";
-import { createSampleTournamentState, SAMPLE_TOURNAMENT_ROUND_ID } from "@/lib/tournament/sample-round";
+import { createSampleTournamentState } from "@/lib/tournament/sample-round";
 import {
   buildFlowTimeline,
   DEMO_MARKETPLACE_COUNT,
 } from "@/lib/tournament/mission-control-demo";
 import { getTournamentViewMode } from "@/lib/tournament/view-mode-labels";
-import { ScoreHelp } from "@/components/scoring/score-help";
-import { MissionControlRoutingSection } from "@/components/tournament/mission-control-routing-section";
-import { TournamentFlowTimeline } from "@/components/tournament/tournament-flow-timeline";
+import { getRoundWinner } from "@/lib/tournament/winner-narrative";
 import { DEFAULT_RUNTIME_MODE, type TournamentRuntimeMode } from "@/lib/tournament/routing/types";
 import {
   readTournamentAdminSettings,
@@ -61,10 +61,22 @@ type EngineStatus = {
   supabaseHint: string | null;
 };
 
+function deriveCompletedPhases(state: TournamentState): Partial<Record<TournamentPhase, boolean>> {
+  const t = state.tournament;
+  return {
+    overview: true,
+    challenge: t.challengeIdeas.length > 0 || Boolean(t.selectedChallenge),
+    agents: t.activeRuns.length > 0,
+    judging: t.evaluations.length > 0,
+    leaderboard: state.leaderboard.length > 0,
+    "marketplace-proof":
+      state.marketplace.length > 0 || enrichLegacyCandidates(state).length > 0,
+  };
+}
+
 export function TournamentView() {
   const t = useTranslations();
   const th = t.tournament.header;
-  const sb = t.tournament.sampleBanner;
   const { mergeKb } = useMemory();
   const [sampleMode, setSampleMode] = useState(true);
   const [replayMode, setReplayMode] = useState(false);
@@ -76,6 +88,7 @@ export function TournamentView() {
   const [runtimeMode, setRuntimeMode] = useState<TournamentRuntimeMode>(() =>
     readTournamentAdminSettings().defaultRuntimeMode,
   );
+  const [activePhase, setActivePhase] = useState<TournamentPhase>("overview");
   const [engineStatus, setEngineStatus] = useState<EngineStatus>({
     llmAvailable: false,
     groqAvailable: false,
@@ -120,6 +133,30 @@ export function TournamentView() {
         }));
       })
       .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const observers: IntersectionObserver[] = [];
+
+    TOURNAMENT_PHASES.forEach((phase) => {
+      const el = document.getElementById(phaseAnchorId(phase));
+      if (!el) return;
+
+      const observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting && entry.intersectionRatio >= 0.25) {
+              setActivePhase(phase);
+            }
+          });
+        },
+        { rootMargin: "-40% 0px -45% 0px", threshold: [0.25, 0.5] },
+      );
+      observer.observe(el);
+      observers.push(observer);
+    });
+
+    return () => observers.forEach((o) => o.disconnect());
   }, []);
 
   const applyLoopResult = useCallback(
@@ -185,7 +222,7 @@ export function TournamentView() {
       }
     }
     return true;
-  }, [applyLoopResult, mergeKb]);
+  }, [applyLoopResult, mergeKb, engineStatus.supabaseCanSave]);
 
   const runStep = useCallback(
     async (step: LoopStep) => {
@@ -272,7 +309,73 @@ export function TournamentView() {
     enrichLegacyCandidates(state).length,
     DEMO_MARKETPLACE_COUNT,
   );
-  const intervalMin = getLoopIntervalMs() / 60000;
+  const winner = getRoundWinner(
+    state.tournament.evaluations,
+    state.tournament.activeRuns,
+    state.leaderboard,
+  );
+  const completedPhases = deriveCompletedPhases(state);
+
+  const handlePause = () => {
+    setState((s) => ({
+      ...s,
+      tournament: { ...s.tournament, paused: true },
+    }));
+    appendEvent({
+      id: crypto.randomUUID(),
+      tournamentId: state.tournament.id,
+      round: state.tournament.round,
+      type: "paused",
+      message: "Auto loop paused",
+      timestamp: new Date().toISOString(),
+    });
+  };
+
+  const handleResume = () => {
+    nextRunRef.current = Date.now() + getLoopIntervalMs();
+    setState((s) => ({
+      ...s,
+      tournament: { ...s.tournament, paused: false },
+    }));
+    appendEvent({
+      id: crypto.randomUUID(),
+      tournamentId: state.tournament.id,
+      round: state.tournament.round,
+      type: "resumed",
+      message: "Auto loop resumed",
+      timestamp: new Date().toISOString(),
+    });
+  };
+
+  const handleSave = async () => {
+    setBusy(true);
+    try {
+      const res = await fetch("/api/tournament/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ state: stateRef.current, mode: engineMode }),
+      });
+      const result = (await res.json()) as {
+        ok: boolean;
+        message: string;
+        savedAt: string;
+      };
+      setPersistMessage(result.ok ? result.message : `Supabase save failed: ${result.message}`);
+      appendEvent({
+        id: crypto.randomUUID(),
+        tournamentId: state.tournament.id,
+        round: state.tournament.round,
+        type: "supabase_save",
+        message: result.message,
+        timestamp: result.savedAt,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Save failed";
+      setPersistMessage(message);
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <div className="relative min-h-screen bg-[#030303] text-zinc-100">
@@ -280,204 +383,137 @@ export function TournamentView() {
       <div className="grid-bg pointer-events-none fixed inset-0 opacity-30" />
       <Nav />
 
-      <main className="relative mx-auto max-w-7xl px-4 pb-24 pt-8 sm:px-6">
-        <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <p className="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.25em] text-violet-400/90">
-              <Radio className="size-3.5 animate-pulse text-emerald-400" />
-              {th.eyebrow}
-            </p>
-            <h1 className="mt-2 text-3xl font-semibold sm:text-4xl">{th.title}</h1>
-            <p className="mt-2 max-w-2xl text-sm text-zinc-400">
-              {fillTemplate(th.description, {
-                runtimeMode: translateRuntimeMode(runtimeMode, t),
-                interval: String(intervalMin),
-              })}
-            </p>
-          </div>
+      <main className="relative mx-auto max-w-7xl px-4 pb-24 pt-6 sm:px-6">
+        <header className="mb-2">
+          <p className="font-mono text-xs uppercase tracking-[0.25em] text-violet-400/90">
+            {th.eyebrow}
+          </p>
+          <h1 className="mt-1 text-2xl font-semibold sm:text-3xl">{th.title}</h1>
         </header>
 
         <TournamentJoinEvents />
 
-        {(sampleMode || replayMode) && (
-          <div className="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-cyan-500/25 bg-cyan-500/10 px-5 py-4">
-            <div>
-              <p className="font-mono text-xs uppercase tracking-wider text-cyan-300">
-                {replayMode ? sb.replayEyebrow : sb.sampleEyebrow}
-              </p>
-              <p className="mt-1 text-sm text-zinc-300">
-                {replayMode ? sb.replayBody : sb.sampleBody}
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Link
-                href={`/tournaments/${SAMPLE_TOURNAMENT_ROUND_ID}`}
-                onClick={() => setReplayMode(true)}
-                className="rounded-lg border border-white/10 px-3 py-2 text-xs text-zinc-300 hover:bg-white/5"
-              >
-                {sb.fullReplay}
-              </Link>
-              <button
-                type="button"
-                onClick={() => {
-                  setSampleMode(false);
-                  setReplayMode(false);
-                  setState(createInitialTournamentState());
-                  setPersistMessage(null);
-                }}
-                className="rounded-lg border border-violet-500/40 bg-violet-500/10 px-3 py-2 text-xs text-violet-200"
-              >
-                {sb.switchLive}
-              </button>
-            </div>
+        <TournamentCommandBar
+          tournament={state.tournament}
+          viewMode={viewMode}
+          runtimeMode={runtimeMode}
+          countdownSec={countdownSec}
+          winner={winner}
+          busy={busy}
+          onRunNow={() => runStep("full")}
+        />
+
+        <TournamentPhaseNav
+          activePhase={activePhase}
+          completedPhases={completedPhases}
+          onPhaseClick={setActivePhase}
+        />
+
+        <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]">
+          <div className="min-w-0 space-y-8">
+            <OverviewStage
+              tournament={state.tournament}
+              flowSteps={flowSteps}
+              viewMode={viewMode}
+              engineMode={engineMode}
+              runtimeMode={runtimeMode}
+              countdownSec={countdownSec}
+              persistMessage={persistMessage}
+              persistIsError={persistMessage?.startsWith("Supabase save failed") ?? false}
+              supabaseConfigured={engineStatus.supabaseConfigured}
+              supabaseTableReady={engineStatus.supabaseTableReady}
+              supabaseHint={engineStatus.supabaseHint}
+              marketplaceCount={marketplaceCount}
+              memoryLessons={state.memory?.lessons_updated}
+              winner={winner}
+              busy={busy}
+              sampleMode={sampleMode}
+              replayMode={replayMode}
+              onRunNow={() => runStep("full")}
+              onReplay={() => {
+                setSampleMode(true);
+                setReplayMode(true);
+                setState(createSampleTournamentState());
+                setPersistMessage(null);
+              }}
+              onSwitchLive={() => {
+                setSampleMode(false);
+                setReplayMode(false);
+                setState(createInitialTournamentState());
+                setPersistMessage(null);
+              }}
+              onSetReplay={() => setReplayMode(true)}
+              onSetSampleOff={() => {
+                setSampleMode(false);
+                setReplayMode(false);
+                setState(createInitialTournamentState());
+                setPersistMessage(null);
+              }}
+            />
+
+            <ChallengeStage
+              ideas={state.tournament.challengeIdeas}
+              selectedChallenge={state.tournament.selectedChallenge}
+              roundSelectedIdeaId={selectedIdeaId}
+            />
+
+            <AgentsStage
+              runs={state.tournament.activeRuns}
+              evaluations={state.tournament.evaluations}
+              agentModels={state.routing?.agentModels}
+              viewMode={viewMode}
+            />
+
+            <JudgingStage
+              evaluations={state.tournament.evaluations}
+              runs={state.tournament.activeRuns}
+            />
+
+            <LeaderboardStage
+              entries={state.leaderboard}
+              viewMode={viewMode}
+              winner={winner}
+              round={state.tournament.round}
+            />
+
+            <MarketplaceProofStage
+              state={state}
+              winner={winner}
+              marketplaceCount={marketplaceCount}
+            />
+
+            <TournamentSystemsDrawer
+              flowSteps={flowSteps}
+              memory={state.memory}
+              events={state.history}
+              evaluations={state.tournament.evaluations}
+              leaderboard={state.leaderboard}
+              constitution={state.constitution}
+              activeRuns={state.tournament.activeRuns}
+              onPromoteMarketplace={() => {
+                setPersistMessage("Constitution marked as marketplace candidate (mock — local only)");
+              }}
+            />
           </div>
-        )}
 
-        <div className="mt-6 flex flex-wrap gap-4">
-          <ScoreHelp system="agent_simulation" />
-          <ScoreHelp system="marketplace" />
-        </div>
-
-        <div className="mt-6 space-y-6">
-          <TournamentStatusCard
-            tournament={state.tournament}
-            countdownSec={countdownSec}
-            persistMessage={persistMessage}
-            engineMode={engineMode}
-            runtimeMode={runtimeMode}
-            viewMode={viewMode}
-            supabaseConfigured={engineStatus.supabaseConfigured}
-            supabaseTableReady={engineStatus.supabaseTableReady}
-            supabaseHint={engineStatus.supabaseHint}
-            persistIsError={persistMessage?.startsWith("Supabase save failed") ?? false}
-            marketplaceCount={marketplaceCount}
-            memoryLessons={state.memory?.lessons_updated}
-            busy={busy}
-            onRunNow={() => runStep("full")}
-            onReplay={() => {
-              setSampleMode(true);
-              setReplayMode(true);
-              setState(createSampleTournamentState());
-              setPersistMessage(null);
-            }}
-            onSwitchLive={() => {
-              setSampleMode(false);
-              setReplayMode(false);
-              setState(createInitialTournamentState());
-              setPersistMessage(null);
-            }}
-          />
-
-          <TournamentFlowTimeline steps={flowSteps} />
-
-          <AdminControls
+          <TournamentOpsRail
             busy={busy}
             paused={state.tournament.paused}
             onRunFull={() => runStep("full")}
-            onPause={() => {
-              setState((s) => ({
-                ...s,
-                tournament: { ...s.tournament, paused: true },
-              }));
-              appendEvent({
-                id: crypto.randomUUID(),
-                tournamentId: state.tournament.id,
-                round: state.tournament.round,
-                type: "paused",
-                message: "Auto loop paused",
-                timestamp: new Date().toISOString(),
-              });
-            }}
-            onResume={() => {
-              nextRunRef.current = Date.now() + getLoopIntervalMs();
-              setState((s) => ({
-                ...s,
-                tournament: { ...s.tournament, paused: false },
-              }));
-              appendEvent({
-                id: crypto.randomUUID(),
-                tournamentId: state.tournament.id,
-                round: state.tournament.round,
-                type: "resumed",
-                message: "Auto loop resumed",
-                timestamp: new Date().toISOString(),
-              });
-            }}
+            onPause={handlePause}
+            onResume={handleResume}
             onGenerateOnly={() => runStep("generate")}
             onRunAgentsOnly={() => runStep("run")}
             onEvaluateOnly={() => runStep("evaluate")}
-            onSave={async () => {
-              setBusy(true);
-              try {
-                const res = await fetch("/api/tournament/save", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ state: stateRef.current, mode: engineMode }),
-                });
-                const result = (await res.json()) as {
-                  ok: boolean;
-                  message: string;
-                  savedAt: string;
-                };
-                setPersistMessage(result.ok ? result.message : `Supabase save failed: ${result.message}`);
-                appendEvent({
-                  id: crypto.randomUUID(),
-                  tournamentId: state.tournament.id,
-                  round: state.tournament.round,
-                  type: "supabase_save",
-                  message: result.message,
-                  timestamp: result.savedAt,
-                });
-              } catch (err) {
-                const message = err instanceof Error ? err.message : "Save failed";
-                setPersistMessage(message);
-              } finally {
-                setBusy(false);
-              }
-            }}
-          />
-
-          <ChallengeGeneratorSection
-            ideas={state.tournament.challengeIdeas}
-            selectedChallenge={state.tournament.selectedChallenge}
-            roundSelectedIdeaId={selectedIdeaId}
-          />
-
-          <ActiveBattlePanel
-            runs={state.tournament.activeRuns}
-            evaluations={state.tournament.evaluations}
-            agentModels={state.routing?.agentModels}
-            viewMode={viewMode}
-          />
-
-          <MissionControlRoutingSection
+            onSave={handleSave}
             routing={state.routing}
             groqAvailable={engineStatus.groqAvailable}
             premiumAvailable={engineStatus.premiumAvailable}
-          />
-
-          <div className="grid gap-6 xl:grid-cols-2">
-            <LiveLeaderboard entries={state.leaderboard} viewMode={viewMode} />
-            <MemoryTournamentPanel memory={state.memory} />
-          </div>
-
-          <MarketplaceSeedPanel state={state} />
-
-          <div className="grid gap-6 xl:grid-cols-2">
-            <AgentPerformanceAnalytics
-              evaluations={state.tournament.evaluations}
-              leaderboard={state.leaderboard}
-            />
-            <TournamentHistory events={state.history} />
-          </div>
-
-          <ConstitutionTournamentPanel
-            constitution={state.constitution}
-            activeRuns={state.tournament.activeRuns}
-            evaluations={state.tournament.evaluations}
-            onPromoteMarketplace={() => {
-              setPersistMessage("Constitution marked as marketplace candidate (mock — local only)");
-            }}
+            persistMessage={persistMessage}
+            persistIsError={persistMessage?.startsWith("Supabase save failed") ?? false}
+            supabaseConfigured={engineStatus.supabaseConfigured}
+            supabaseTableReady={engineStatus.supabaseTableReady}
+            supabaseHint={engineStatus.supabaseHint}
           />
         </div>
       </main>

@@ -128,6 +128,9 @@ export type Evaluation = {
   passed: boolean;
   failReason?: string;
   gateFailed?: string;
+  /** below_gate = valid output under pass threshold; fail = invalid/disqualified */
+  gateOutcome?: "below_gate" | "fail";
+  gateFailNote?: string;
   constitutionVersion?: string;
   constitutionVersionId?: string;
 };

@@ -16,6 +16,8 @@ import {
 } from "@/lib/i18n/helpers";
 
 type InterestApiValue = (typeof INTEREST_API_VALUES)[InterestKey];
+import { HowArenaWorksSection } from "@/components/workflow/how-arena-works";
+import { ProofStatsBanner } from "@/components/workflow/proof-stats-cards";
 import type { LandingPageData } from "@/lib/landing/types";
 
 const TOKEN_CHIPS = [
@@ -415,27 +417,13 @@ export function LandingPage({ data }: LandingPageProps) {
           </div>
         </section>
 
-        {/* How It Works */}
-        <section id="how-it-works" className="border-t border-white/[0.06] px-6 py-28">
-          <div className="mx-auto max-w-6xl text-center">
-            <SectionLabel>{l.howItWorks.label}</SectionLabel>
-            <h2 className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">
-              {l.howItWorks.title}
-            </h2>
+        {/* How AI ARENA Works */}
+        <div id="how-it-works">
+          <HowArenaWorksSection />
+          <div className="mx-auto max-w-6xl px-6 pb-20">
+            <ProofStatsBanner />
           </div>
-          <div className="mx-auto mt-16 grid max-w-6xl gap-4 sm:grid-cols-2 lg:grid-cols-5">
-            {l.howItWorks.steps.map((step) => (
-              <div
-                key={step.title}
-                className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-5 text-left"
-              >
-                <span className="font-mono text-xl text-emerald-500/50">{step.num}</span>
-                <h3 className="mt-3 text-base font-medium leading-snug">{step.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-zinc-400">{step.desc}</p>
-              </div>
-            ))}
-          </div>
-        </section>
+        </div>
 
         {/* First Challenge — dedicated beta validation */}
         <section id="first-challenge" className="border-t border-white/[0.06] px-6 py-28">

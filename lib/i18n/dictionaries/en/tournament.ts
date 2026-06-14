@@ -102,8 +102,8 @@ export const tournament = {
     },
   },
   adminControls: {
-    title: "9 · Admin controls",
-    subtitle: "Manual overrides for the 5-minute autonomous loop",
+    title: "Operator controls",
+    subtitle: "Manual overrides for the autonomous tournament loop",
     runNow: "Run tournament now",
     pause: "Pause loop",
     resume: "Resume loop",
@@ -206,5 +206,105 @@ export const tournament = {
     yes: "Yes",
     no: "No",
     min: "min",
+  },
+  os: {
+    tagline: "Agents compete. Judges score. Winners become marketplace assets.",
+    command: {
+      roundLabel: "Round {round} · {roundId}",
+      paused: "Paused",
+      nextIn: "Next in",
+      runRound: "Run round",
+    },
+    phases: {
+      overview: "Overview",
+      challenge: "Challenge",
+      agents: "Agents",
+      judging: "Judging",
+      leaderboard: "Leaderboard",
+      "marketplace-proof": "Marketplace Proof",
+    },
+    stages: {
+      overview: {
+        eyebrow: "Situation",
+        title: "Round overview",
+        subtitle: "Current Tournament Round status, flow progress, and winner spotlight.",
+      },
+      challenge: {
+        eyebrow: "Context",
+        title: "Challenge",
+        subtitle: "Creator agents propose challenges — the highest-scoring idea becomes this round's battle.",
+      },
+      agents: {
+        eyebrow: "Execution",
+        title: "Agents",
+        subtitle: "Operating specs, Agent Battles, and output previews for every competitor.",
+      },
+      judging: {
+        eyebrow: "Verdict",
+        title: "Judging",
+        subtitle: "Judge Evaluation scorecards, gate outcomes, and scoring breakdown.",
+      },
+      leaderboard: {
+        eyebrow: "Ranking",
+        title: "Leaderboard",
+        subtitle: "Round rankings with a clear explanation of why the winner leads.",
+      },
+      "marketplace-proof": {
+        eyebrow: "Outcome",
+        title: "Marketplace Proof",
+        subtitle: "Battle-tested assets detected from this round — ready for review and stack composition.",
+      },
+    },
+    ops: {
+      title: "Operator panel",
+      persistence: "Persistence",
+      persistenceLocal: "Local only — rounds saved in browser",
+      persistenceReady: "Supabase ready — rounds can persist",
+      persistenceTableMissing: "Supabase configured — tournament table missing",
+    },
+    systems: {
+      eyebrow: "Advanced",
+      title: "Systems & replay",
+      subtitle: "Memory compile, event log, constitutions, analytics, and engine map.",
+      timeline: "Event timeline",
+      memory: "Memory compiled",
+      replay: "Replay & history",
+      constitutions: "Agent constitutions",
+      analytics: "Agent performance",
+    },
+    agents: {
+      tabs: {
+        prep: "Prep",
+        battles: "Battles",
+        outputs: "Outputs",
+      },
+    },
+    judging: {
+      showFormula: "Show score formula",
+      hideFormula: "Hide score formula",
+    },
+    leaderboard: {
+      showTable: "Full breakdown",
+      hideTable: "Hide table",
+      whyWon: "Why they won",
+      rank1: "1st",
+      rank2: "2nd",
+      rank3: "3rd",
+    },
+    winner: {
+      spotlight: "Round winner",
+      viewProof: "View marketplace proof →",
+      quality: "Quality",
+      efficiency: "Efficiency",
+      marketplace: "Marketplace",
+      penalties: "Penalties",
+    },
+    proof: {
+      browse: "Browse marketplace",
+      addStack: "Add to stack",
+      summary: "This round produced {count} Marketplace Candidates from tournament results.",
+      summaryWithWinner:
+        "{count} Marketplace Candidates detected — {winnerCount} linked to winner {winner}.",
+    },
   },
 };

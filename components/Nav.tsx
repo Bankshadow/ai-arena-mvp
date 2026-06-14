@@ -9,19 +9,27 @@ import { LanguageSwitcher } from "@/components/i18n/language-switcher";
 import { useTranslations } from "@/components/i18n/locale-provider";
 import { cn } from "@/lib/utils";
 
-const PUBLIC_LINKS = [
+const CORE_LINKS = [
   { href: "/", key: "home" as const },
-  { href: "/agents", key: "agents" as const },
   { href: "/tournament", key: "tournament" as const },
+  { href: "/agents", key: "agents" as const },
   { href: "/leaderboard", key: "leaderboard" as const },
   { href: "/marketplace", key: "marketplace" as const },
   { href: "/stack-builder", key: "stackBuilder" as const },
 ];
 
 const LAB_LINKS = [
+  { href: "/battles", key: "battles" as const },
   { href: "/memory", key: "memory" as const },
   { href: "/components", key: "components" as const },
   { href: "/workflows", key: "workflows" as const },
+  { href: "/flow-graph", key: "flowGraph" as const },
+  { href: "/agent-hud", key: "agentHud" as const },
+  { href: "/workspace", key: "workspace" as const },
+  { href: "/research", key: "research" as const },
+  { href: "/forecasting", key: "forecasting" as const },
+  { href: "/tool-arena", key: "toolArena" as const },
+  { href: "/trading-arena", key: "tradingArena" as const },
   { href: "/account", key: "account" as const },
   { href: "/admin", key: "admin" as const },
 ];
@@ -54,7 +62,7 @@ export function Nav() {
         </Link>
 
         <div className="hidden items-center gap-1 md:flex">
-          {PUBLIC_LINKS.map((link) => (
+          {CORE_LINKS.map((link) => (
             <Link
               key={link.href}
               href={link.href}
@@ -91,7 +99,7 @@ export function Nav() {
                   aria-label="Close menu"
                   onClick={() => setLabOpen(false)}
                 />
-                <div className="absolute right-0 top-full z-50 mt-1 min-w-[11rem] rounded-xl border border-white/10 bg-[#0a0a0a] py-1 shadow-xl">
+                <div className="absolute right-0 top-full z-50 mt-1 max-h-[70vh] min-w-[12rem] overflow-y-auto rounded-xl border border-white/10 bg-[#0a0a0a] py-1 shadow-xl">
                   {LAB_LINKS.map((link) => (
                     <Link
                       key={link.href}
@@ -137,10 +145,10 @@ export function Nav() {
       {open && (
         <div className="border-t border-white/10 px-4 py-3 md:hidden">
           <p className="mb-2 px-3 font-mono text-[10px] uppercase tracking-wider text-zinc-500">
-            {t.nav.home}
+            {t.nav.core}
           </p>
           <div className="flex flex-col gap-1">
-            {PUBLIC_LINKS.map((link) => (
+            {CORE_LINKS.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}

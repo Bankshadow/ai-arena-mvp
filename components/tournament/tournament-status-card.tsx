@@ -42,6 +42,8 @@ type Props = {
   onReplay?: () => void;
   onSwitchLive?: () => void;
   busy?: boolean;
+  /** Nested inside tournament OS stage — hides outer section chrome */
+  embedded?: boolean;
 };
 
 export function TournamentStatusCard({
@@ -61,6 +63,7 @@ export function TournamentStatusCard({
   onReplay,
   onSwitchLive,
   busy,
+  embedded,
 }: Props) {
   const t = useTranslations();
   const ts = t.tournament.status;
@@ -83,14 +86,26 @@ export function TournamentStatusCard({
       : ts.badges.supabaseTableMissing;
 
   return (
-    <section className="glass-card overflow-hidden rounded-2xl border border-violet-500/20">
-      <div className="border-b border-white/10 bg-gradient-to-r from-violet-500/10 via-transparent to-cyan-500/10 px-5 py-4">
+    <section
+      className={
+        embedded
+          ? "overflow-hidden rounded-xl border border-white/10 bg-black/20"
+          : "glass-card overflow-hidden rounded-2xl border border-violet-500/20"
+      }
+    >
+      <div
+        className={`border-b border-white/10 px-5 py-4 ${
+          embedded ? "bg-black/20" : "bg-gradient-to-r from-violet-500/10 via-transparent to-cyan-500/10"
+        }`}
+      >
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="font-mono text-xs uppercase tracking-[0.2em] text-violet-400/80">
-              {fillTemplate(ts.engineLabel, { roundId: DEMO_ROUND_ID })}
-            </p>
-            <h2 className="mt-1 text-xl font-semibold text-white">
+            {!embedded && (
+              <p className="font-mono text-xs uppercase tracking-[0.2em] text-violet-400/80">
+                1 · Tournament status · {fillTemplate(ts.engineLabel, { roundId: DEMO_ROUND_ID })}
+              </p>
+            )}
+            <h2 className={`${embedded ? "text-lg" : "mt-1 text-xl"} font-semibold text-white`}>
               {fillTemplate(ts.roundPhase, {
                 round: String(tournament.round || 12),
                 phase: phaseLabel,
@@ -117,8 +132,12 @@ export function TournamentStatusCard({
         </div>
       </div>
 
-      <div className="grid gap-4 border-b border-white/10 p-5 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
-        <Stat label={ts.stats.loopInterval} value={`${intervalMin} ${tc.min}`} />
+      <div
+        className={`grid gap-3 border-b border-white/10 p-4 ${
+          embedded ? "grid-cols-2 sm:grid-cols-3" : "gap-4 p-5 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6"
+        }`}
+      >
+        <Stat label={ts.stats.loopInterval} value={`${intervalMin} ${tc.min}`} embedded={embedded} />
         <Stat
           label={ts.stats.nextRun}
           value={
@@ -127,11 +146,12 @@ export function TournamentStatusCard({
               : ts.stats.manual
           }
           highlight={viewMode === "live" && !tournament.paused && countdownSec !== null && countdownSec < 60}
+          embedded={embedded}
         />
-        <Stat label={ts.stats.lastCompleted} value={formatTime(tournament.completedAt)} />
-        <Stat label={translateViewModeRunsStat(viewMode, t)} value={String(tournament.activeRuns.length)} />
-        <Stat label={ts.stats.winner} value={winner} />
-        <Stat label={ts.stats.finalScore} value={`${winnerScore.toFixed(0)}`} highlight />
+        <Stat label={ts.stats.lastCompleted} value={formatTime(tournament.completedAt)} embedded={embedded} />
+        <Stat label={translateViewModeRunsStat(viewMode, t)} value={String(tournament.activeRuns.length)} embedded={embedded} />
+        <Stat label={ts.stats.winner} value={winner} embedded={embedded} />
+        <Stat label={ts.stats.finalScore} value={`${winnerScore.toFixed(0)}`} highlight embedded={embedded} />
       </div>
 
       {showDemoStats && (
@@ -198,15 +218,17 @@ function Stat({
   label,
   value,
   highlight,
+  embedded,
 }: {
   label: string;
   value: string;
   highlight?: boolean;
+  embedded?: boolean;
 }) {
   return (
     <div className="rounded-xl border border-white/10 bg-black/25 p-3">
       <p className="text-xs text-zinc-500">{label}</p>
-      <p className={`mt-1 font-mono text-lg ${highlight ? "text-emerald-400" : "text-white"}`}>
+      <p className={`mt-1 font-mono ${embedded ? "text-base" : "text-lg"} ${highlight ? "text-emerald-400" : "text-white"}`}>
         {value}
       </p>
     </div>

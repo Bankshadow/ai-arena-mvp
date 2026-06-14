@@ -13,28 +13,36 @@ import {
 } from "@/lib/marketplace/types";
 import type { TournamentState } from "@/lib/tournament/types";
 
-type Props = { state: TournamentState };
+type Props = { state: TournamentState; embedded?: boolean };
 
-export function MarketplaceSeedPanel({ state }: Props) {
+export function MarketplaceSeedPanel({ state, embedded }: Props) {
   const candidates = enrichLegacyCandidates(state).slice(0, 6);
 
   return (
-    <section className="glass-card overflow-hidden rounded-2xl border border-emerald-500/15">
-      <div className="border-b border-white/10 bg-gradient-to-r from-emerald-500/5 to-transparent px-5 py-4">
-        <h3 className="text-sm font-semibold uppercase tracking-wider text-zinc-400">
-          Marketplace proof pipeline
-        </h3>
-        <p className="text-xs text-zinc-500">
-          Tournament → Proof → Component → Stack → Export · round {state.tournament.round || "—"}
-        </p>
-      </div>
+    <section
+      className={
+        embedded
+          ? ""
+          : "glass-card overflow-hidden rounded-2xl border border-emerald-500/15"
+      }
+    >
+      {!embedded && (
+        <div className="border-b border-white/10 bg-gradient-to-r from-emerald-500/5 to-transparent px-5 py-4">
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-zinc-400">
+            10 · Marketplace candidates
+          </h3>
+          <p className="text-xs text-zinc-500">
+            Tournament → Proof → Component → Stack → Export · round {state.tournament.round || "—"}
+          </p>
+        </div>
+      )}
 
       {candidates.length === 0 ? (
         <p className="p-8 text-center text-sm text-zinc-600">
           Run a tournament loop to detect marketplace candidates
         </p>
       ) : (
-        <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div className={`grid gap-3 ${embedded ? "grid-cols-1 lg:grid-cols-2" : "p-4 sm:grid-cols-2 xl:grid-cols-3"}`}>
           {candidates.map((c) => (
             <article
               key={c.id}
@@ -42,7 +50,7 @@ export function MarketplaceSeedPanel({ state }: Props) {
             >
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <p className="font-medium text-zinc-100">{c.title}</p>
+                  <p className="text-sm font-medium leading-snug text-zinc-100">{c.title}</p>
                   {c.agent_name && (
                     <p className="mt-0.5 text-xs text-zinc-500">{c.agent_name}</p>
                   )}
