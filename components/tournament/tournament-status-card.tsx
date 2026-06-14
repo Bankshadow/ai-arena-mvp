@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import type { Tournament, TournamentPhase } from "@/lib/tournament/types";
+import type { Tournament } from "@/lib/tournament/types";
 import type { TournamentMode } from "@/lib/tournament/engine";
 import { getLoopIntervalMs } from "@/lib/tournament/engine";
 import {
@@ -15,10 +15,16 @@ import {
   DEMO_ROUND_ID,
   DEMO_WINNER_AGENT,
   DEMO_WINNER_SCORE,
-  type TournamentViewMode,
 } from "@/lib/tournament/mission-control-demo";
+import {
+  isCompletedViewMode,
+  VIEW_MODE_CTA,
+  VIEW_MODE_RUNS_STAT,
+  VIEW_MODE_STATUS_LABEL,
+  type TournamentViewMode,
+} from "@/lib/tournament/view-mode-labels";
 
-const PHASE_LABELS: Record<TournamentPhase, string> = {
+const PHASE_LABELS: Record<Tournament["phase"], string> = {
   idle: "Standby",
   generating: "Generating challenges",
   selecting: "Selecting challenge",
@@ -27,12 +33,6 @@ const PHASE_LABELS: Record<TournamentPhase, string> = {
   scoring: "Calculating scores",
   marketplace: "Seeding marketplace",
   complete: "Round complete",
-};
-
-const VIEW_LABELS: Record<TournamentViewMode, string> = {
-  last_completed: "Last completed round",
-  live: "Live round",
-  standby: "Standby",
 };
 
 type Props = {
@@ -60,7 +60,7 @@ export function TournamentStatusCard({
   persistMessage,
   engineMode,
   runtimeMode = DEFAULT_RUNTIME_MODE,
-  viewMode = "last_completed",
+  viewMode = "completed_sample",
   supabaseConfigured,
   supabaseTableReady,
   supabaseHint,
@@ -80,6 +80,8 @@ export function TournamentStatusCard({
   const winnerScore =
     [...tournament.evaluations].sort((a, b) => b.totalScore - a.totalScore)[0]?.totalScore ??
     DEMO_WINNER_SCORE;
+  const cta = VIEW_MODE_CTA[viewMode];
+  const showDemoStats = isCompletedViewMode(viewMode);
 
   return (
     <section className="glass-card overflow-hidden rounded-2xl border border-violet-500/20">
@@ -93,7 +95,7 @@ export function TournamentStatusCard({
               Round {tournament.round || 12} · {phaseLabel}
             </h2>
             <p className="mt-1 text-sm text-cyan-300/90">
-              Current view: {VIEW_LABELS[viewMode]}
+              Current view: {VIEW_MODE_STATUS_LABEL[viewMode]}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -116,21 +118,19 @@ export function TournamentStatusCard({
         <Stat
           label="Next run"
           value={
-            tournament.paused
-              ? "Manual"
-              : countdownSec !== null
-                ? `${Math.floor(countdownSec / 60)}:${String(countdownSec % 60).padStart(2, "0")}`
-                : "Manual"
+            viewMode === "live" && !tournament.paused && countdownSec !== null
+              ? `${Math.floor(countdownSec / 60)}:${String(countdownSec % 60).padStart(2, "0")}`
+              : "Manual"
           }
-          highlight={!tournament.paused && countdownSec !== null && countdownSec < 60}
+          highlight={viewMode === "live" && !tournament.paused && countdownSec !== null && countdownSec < 60}
         />
         <Stat label="Last completed" value={formatTime(tournament.completedAt)} />
-        <Stat label="Active runs" value={String(tournament.activeRuns.length)} />
+        <Stat label={VIEW_MODE_RUNS_STAT[viewMode]} value={String(tournament.activeRuns.length)} />
         <Stat label="Winner" value={winner} />
         <Stat label="Final score" value={`${winnerScore.toFixed(0)}`} highlight />
       </div>
 
-      {viewMode === "last_completed" && (
+      {showDemoStats && (
         <div className="grid gap-3 border-b border-white/10 bg-black/20 p-5 sm:grid-cols-2 lg:grid-cols-4">
           <DemoStat label="Selected challenge" value="Executive Summary Battle" />
           <DemoStat label="Cost saved vs all-Claude" value={`$${DEMO_COST_SAVED_USD.toFixed(2)}`} />
@@ -141,13 +141,13 @@ export function TournamentStatusCard({
 
       <div className="flex flex-wrap gap-2 border-b border-white/10 px-5 py-4">
         <ActionButton onClick={onRunNow} disabled={busy} primary>
-          Run tournament now
+          {cta.runNow}
         </ActionButton>
         <ActionButton onClick={onReplay} disabled={busy}>
-          Replay last round
+          {cta.replay}
         </ActionButton>
         <ActionButton onClick={onSwitchLive} disabled={busy}>
-          Switch to live mode
+          {cta.switchLive}
         </ActionButton>
       </div>
 

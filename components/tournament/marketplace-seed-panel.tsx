@@ -14,12 +14,13 @@ const DEMO_LABELS = [
   "Low-Cost Executive Summary Workflow",
   "Lean Operator v1.2 Constitution",
   "Groq-first Cost Router",
+  "Strategy Creator Constitution v1.0",
 ];
 
 type Props = { state: TournamentState };
 
 export function MarketplaceSeedPanel({ state }: Props) {
-  const candidates = enrichLegacyCandidates(state).slice(0, 3);
+  const candidates = enrichLegacyCandidates(state).slice(0, 4);
 
   return (
     <section className="glass-card overflow-hidden rounded-2xl border border-emerald-500/15">
@@ -37,7 +38,7 @@ export function MarketplaceSeedPanel({ state }: Props) {
           Run a tournament loop to detect marketplace candidates
         </p>
       ) : (
-        <div className="grid gap-3 p-4 lg:grid-cols-3">
+        <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-4">
           {candidates.map((c, i) => (
             <article
               key={c.id}

@@ -50,7 +50,18 @@ export function SelectedChallengeCard({ challenge, idea, isRoundWinner = true }:
         <p className="mt-2 text-sm text-zinc-400">{challenge.brief}</p>
       </div>
 
-      {challenge.selectedReason && isRoundWinner && (
+      {challenge.selectedReason && isRoundWinner && idea && (
+        <div className="border-b border-white/10 bg-black/20 px-5 py-3 space-y-2">
+          <p className="text-[10px] uppercase text-zinc-500">Selected reason</p>
+          <p className="text-sm text-zinc-300">{challenge.selectedReason}</p>
+          <p className="text-xs text-zinc-500">
+            Highest selection score among creator agents · novelty {idea.noveltyScore} · feasibility{" "}
+            {idea.feasibilityScore} · marketplace potential {idea.marketplacePotential ?? "—"}
+          </p>
+        </div>
+      )}
+
+      {challenge.selectedReason && isRoundWinner && !idea && (
         <div className="border-b border-white/10 bg-black/20 px-5 py-3">
           <p className="text-[10px] uppercase text-zinc-500">Selected reason</p>
           <p className="mt-1 text-sm text-zinc-300">{challenge.selectedReason}</p>

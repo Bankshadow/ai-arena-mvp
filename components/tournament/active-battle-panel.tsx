@@ -1,5 +1,9 @@
 import type { AgentRun, Evaluation } from "@/lib/tournament/types";
-import type { TournamentViewMode } from "@/lib/tournament/mission-control-demo";
+import {
+  isCompletedViewMode,
+  VIEW_MODE_BATTLE_TITLE,
+  type TournamentViewMode,
+} from "@/lib/tournament/view-mode-labels";
 
 type Props = {
   runs: AgentRun[];
@@ -18,21 +22,32 @@ function modelBadge(agentId: string, modelUsed: string, agentModels?: Record<str
   );
 }
 
-export function ActiveBattlePanel({ runs, evaluations, agentModels, viewMode }: Props) {
+function FailBadge({ evaluation }: { evaluation: Evaluation }) {
+  if (evaluation.passed || !evaluation.failReason) return null;
+  return (
+    <span
+      title={`Gate: ${evaluation.gateFailed?.replace(/_/g, " ") ?? "failed"}`}
+      className="mt-2 inline-flex rounded-full border border-red-500/30 bg-red-500/10 px-2 py-0.5 text-[10px] text-red-300"
+    >
+      {evaluation.failReason}
+    </span>
+  );
+}
+
+export function ActiveBattlePanel({ runs, evaluations, agentModels, viewMode = "completed_sample" }: Props) {
   const evalByRun = new Map(evaluations.map((e) => [e.runId, e]));
-  const allComplete = runs.length > 0 && runs.every((r) => evalByRun.has(r.id));
-  const completedMode = viewMode === "last_completed" || allComplete;
+  const completedMode = isCompletedViewMode(viewMode) || (runs.length > 0 && runs.every((r) => evalByRun.has(r.id)));
 
   return (
     <section className="glass-card overflow-hidden rounded-2xl">
       <div className="border-b border-white/10 px-5 py-4">
         <h3 className="text-sm font-semibold uppercase tracking-wider text-zinc-400">
-          4 · {completedMode ? "Last completed agent runs" : "Active battle"}
+          4 · {VIEW_MODE_BATTLE_TITLE[viewMode]}
         </h3>
         <p className="text-xs text-zinc-500">
           {completedMode
             ? "5 competitor agents · completed · 2 judges (mock)"
-            : "5 competitor agents · 2 judges (mock)"}
+            : "5 competitor agents · live · 2 judges (mock)"}
         </p>
       </div>
 
@@ -48,7 +63,7 @@ export function ActiveBattlePanel({ runs, evaluations, agentModels, viewMode }: 
                 className={`rounded-xl border p-4 ${
                   ev?.passed
                     ? "border-emerald-500/25 bg-emerald-500/5"
-                    : "border-white/10 bg-black/20"
+                    : "border-red-500/20 bg-red-500/5"
                 }`}
               >
                 <div className="flex items-start justify-between gap-2">
@@ -63,15 +78,12 @@ export function ActiveBattlePanel({ runs, evaluations, agentModels, viewMode }: 
                         : "border-red-500/40 text-red-300"
                     }`}
                   >
-                    {ev?.passed ? "completed" : "failed"}
+                    {ev?.passed ? "completed" : "fail"}
                   </span>
                 </div>
                 <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
                   <Stat label="Score" value={ev ? ev.totalScore.toFixed(1) : "—"} accent />
-                  <Stat
-                    label="Tokens"
-                    value={(run.tokensIn + run.tokensOut).toLocaleString()}
-                  />
+                  <Stat label="Tokens" value={(run.tokensIn + run.tokensOut).toLocaleString()} />
                   <Stat label="Cost" value={`$${run.costUsd.toFixed(3)}`} />
                   <Stat label="Latency" value={`${(run.latencyMs / 1000).toFixed(1)}s`} />
                 </dl>
@@ -80,6 +92,7 @@ export function ActiveBattlePanel({ runs, evaluations, agentModels, viewMode }: 
                     ev?.efficiencyJudgeNotes ??
                     "Single-pass structured brief workflow."}
                 </p>
+                {ev && <FailBadge evaluation={ev} />}
                 {ev && ev.penaltyTotal < 0 && (
                   <p className="mt-2 text-[10px] text-red-400/90">
                     Penalty {ev.penaltyTotal} pts applied
@@ -91,7 +104,7 @@ export function ActiveBattlePanel({ runs, evaluations, agentModels, viewMode }: 
         </div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[640px] text-sm">
+          <table className="w-full min-w-[720px] text-sm">
             <thead className="bg-white/5 text-left text-[10px] uppercase tracking-wider text-zinc-500">
               <tr>
                 <th className="px-4 py-2.5">Agent</th>
@@ -111,6 +124,11 @@ export function ActiveBattlePanel({ runs, evaluations, agentModels, viewMode }: 
                     <td className="px-4 py-3">
                       <p className="font-medium text-zinc-200">{run.agentName}</p>
                       {modelBadge(run.agentId, run.modelUsed, agentModels)}
+                      {ev && !ev.passed && (
+                        <div className="mt-1">
+                          <FailBadge evaluation={ev} />
+                        </div>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       {live ? (

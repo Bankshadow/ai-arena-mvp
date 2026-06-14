@@ -26,11 +26,13 @@ import {
   type LoopStep,
   type TournamentMode,
 } from "@/lib/tournament/engine";
+import { enrichLegacyCandidates } from "@/lib/marketplace/candidate-detector";
 import { createSampleTournamentState, SAMPLE_TOURNAMENT_ROUND_ID } from "@/lib/tournament/sample-round";
 import {
   buildFlowTimeline,
-  getTournamentViewMode,
+  DEMO_MARKETPLACE_COUNT,
 } from "@/lib/tournament/mission-control-demo";
+import { getTournamentViewMode } from "@/lib/tournament/view-mode-labels";
 import { ScoreHelp } from "@/components/scoring/score-help";
 import { MissionControlRoutingSection } from "@/components/tournament/mission-control-routing-section";
 import { TournamentFlowTimeline } from "@/components/tournament/tournament-flow-timeline";
@@ -59,6 +61,7 @@ type EngineStatus = {
 export function TournamentView() {
   const { mergeKb } = useMemory();
   const [sampleMode, setSampleMode] = useState(true);
+  const [replayMode, setReplayMode] = useState(false);
   const [state, setState] = useState<TournamentState>(() => createSampleTournamentState());
   const [busy, setBusy] = useState(false);
   const [countdownSec, setCountdownSec] = useState<number | null>(null);
@@ -179,6 +182,7 @@ export function TournamentView() {
   const runStep = useCallback(
     async (step: LoopStep) => {
       setSampleMode(false);
+      setReplayMode(false);
       setBusy(true);
       try {
         const ok = await runStepViaApi(step);
@@ -253,8 +257,13 @@ export function TournamentView() {
         ).id
       : null;
 
-  const viewMode = getTournamentViewMode(state, sampleMode);
+  const viewMode = getTournamentViewMode(state, { sampleMode, replayMode });
   const flowSteps = buildFlowTimeline(state);
+  const marketplaceCount = Math.max(
+    state.marketplace.length,
+    enrichLegacyCandidates(state).length,
+    DEMO_MARKETPLACE_COUNT,
+  );
 
   return (
     <div className="relative min-h-screen bg-[#030303] text-zinc-100">
@@ -281,20 +290,22 @@ export function TournamentView() {
 
         <TournamentJoinEvents />
 
-        {sampleMode && (
+        {(sampleMode || replayMode) && (
           <div className="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-cyan-500/25 bg-cyan-500/10 px-5 py-4">
             <div>
               <p className="font-mono text-xs uppercase tracking-wider text-cyan-300">
-                Sample round · Replay mode
+                {replayMode ? "Replay mode · T-R12" : "Completed sample round · T-R12"}
               </p>
               <p className="mt-1 text-sm text-zinc-300">
-                Showing a completed demo round. Use manual controls below to start a live loop, or
-                clear to reset the engine.
+                {replayMode
+                  ? "Step through the last completed round. Switch to live mode to start a fresh tournament loop."
+                  : "Showing a completed demo round. Run tournament now for a live loop, or open full replay."}
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
               <Link
                 href={`/tournaments/${SAMPLE_TOURNAMENT_ROUND_ID}`}
+                onClick={() => setReplayMode(true)}
                 className="rounded-lg border border-white/10 px-3 py-2 text-xs text-zinc-300 hover:bg-white/5"
               >
                 Full replay →
@@ -303,6 +314,7 @@ export function TournamentView() {
                 type="button"
                 onClick={() => {
                   setSampleMode(false);
+                  setReplayMode(false);
                   setState(createInitialTournamentState());
                   setPersistMessage(null);
                 }}
@@ -331,17 +343,19 @@ export function TournamentView() {
             supabaseTableReady={engineStatus.supabaseTableReady}
             supabaseHint={engineStatus.supabaseHint}
             persistIsError={persistMessage?.startsWith("Supabase save failed") ?? false}
-            marketplaceCount={state.marketplace.length}
+            marketplaceCount={marketplaceCount}
             memoryLessons={state.memory?.lessons_updated}
             busy={busy}
             onRunNow={() => runStep("full")}
             onReplay={() => {
               setSampleMode(true);
+              setReplayMode(true);
               setState(createSampleTournamentState());
               setPersistMessage(null);
             }}
             onSwitchLive={() => {
               setSampleMode(false);
+              setReplayMode(false);
               setState(createInitialTournamentState());
               setPersistMessage(null);
             }}

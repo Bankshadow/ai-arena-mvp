@@ -2,6 +2,7 @@ import type {
   Challenge,
   ChallengeIdea,
   CreatorAgentId,
+  AgentRun,
   Evaluation,
   LeaderboardEntry,
   MarketplaceCandidate,
@@ -23,10 +24,14 @@ export const DEMO_ROUND_ID = "T-R12";
 export const DEMO_WINNER_AGENT = "Lean Agent";
 export const DEMO_WINNER_SCORE = 91;
 export const DEMO_COST_SAVED_USD = 0.42;
-export const DEMO_MARKETPLACE_COUNT = 3;
+export const DEMO_MARKETPLACE_COUNT = 4;
 export const DEMO_MEMORY_LESSONS = 2;
 
-export type TournamentViewMode = "last_completed" | "live" | "standby";
+export type { TournamentViewMode } from "@/lib/tournament/view-mode-labels";
+export {
+  getTournamentViewMode,
+  isEmptyTournamentState,
+} from "@/lib/tournament/view-mode-labels";
 
 export type TournamentFlowStep = {
   id: string;
@@ -82,6 +87,12 @@ const DEMO_MARKETPLACE: Array<{
     challengeTitle: "Executive Summary Battle",
     status: "review",
   },
+  {
+    label: "Strategy Creator Constitution v1.0",
+    agentName: "Strategy Agent",
+    challengeTitle: "Executive Summary Battle",
+    status: "seed",
+  },
 ];
 
 function minutesAgo(minutes: number): string {
@@ -107,11 +118,47 @@ function enrichSelectedChallenge(challenge: Challenge, ideas: ChallengeIdea[]): 
     scoringRubric: "80% quality (accuracy, structure, usefulness) + 20% cost efficiency",
     timeLimitMinutes: 5,
     selectedReason: winner
-      ? `Highest selection score (${winner.selectionScore}) with strong novelty (${winner.noveltyScore}) for board-ready outputs.`
+      ? `Selected because it had the highest selection score (${winner.selectionScore}). Novelty ${winner.noveltyScore} · Feasibility ${winner.feasibilityScore} · Marketplace potential ${IDEA_META[winner.creatorId].marketplacePotential}.`
       : "Top selection score from creator agents this round.",
     passThreshold: 72,
     costLimitUsd: 1.0,
   };
+}
+
+function enrichFailReasons(
+  evaluations: Evaluation[],
+  runs: AgentRun[],
+  challenge: Challenge,
+): Evaluation[] {
+  const FAIL_BY_AGENT: Partial<
+    Record<
+      Evaluation["agentId"],
+      { failReason: string; gateFailed: string }
+    >
+  > = {
+    premium: { failReason: "cost cap exceeded", gateFailed: "cost_cap" },
+    rag: { failReason: "quality gate failed", gateFailed: "quality" },
+    "multi-agent": { failReason: "format compliance failed", gateFailed: "format" },
+    fast: { failReason: "missing required section", gateFailed: "format" },
+  };
+
+  return evaluations.map((ev) => {
+    if (ev.passed) return ev;
+    const run = runs.find((r) => r.id === ev.runId);
+    const preset = FAIL_BY_AGENT[ev.agentId];
+    if (preset) return { ...ev, ...preset };
+
+    if (run && run.costUsd > challenge.costLimitUsd) {
+      return { ...ev, failReason: "cost cap exceeded", gateFailed: "cost_cap" };
+    }
+    if (ev.scores.badFormattingPenalty < 0) {
+      return { ...ev, failReason: "format compliance failed", gateFailed: "format" };
+    }
+    if (run && run.latencyMs > 10000) {
+      return { ...ev, failReason: "latency gate failed", gateFailed: "latency" };
+    }
+    return { ...ev, failReason: "quality gate failed", gateFailed: "quality" };
+  });
 }
 
 function patchWinnerScore(evaluations: Evaluation[]): Evaluation[] {
@@ -324,6 +371,7 @@ function buildDemoHistory(
 
   return [
     mk("loop_complete", "Round completed · winner Lean Agent · score 91", 2),
+    mk("marketplace_seeded", "4 marketplace candidates created", 2),
     mk("marketplace_seeded", "Marketplace candidate created · Groq-first Cost Router", 2),
     mk("marketplace_seeded", "Marketplace candidate created · Lean Operator v1.2 Constitution", 3),
     mk("leaderboard_updated", "Memory lesson extracted · cost-cap routing pattern", 3),
@@ -404,32 +452,18 @@ export function buildFlowTimeline(state: TournamentState): TournamentFlowStep[] 
   }));
 }
 
-export function isEmptyTournamentState(state: TournamentState): boolean {
-  return (
-    state.tournament.challengeIdeas.length === 0 &&
-    state.tournament.activeRuns.length === 0 &&
-    state.tournament.phase === "idle"
-  );
-}
-
-export function getTournamentViewMode(
-  state: TournamentState,
-  sampleMode: boolean,
-): TournamentViewMode {
-  if (isEmptyTournamentState(state)) return "standby";
-  if (sampleMode || state.tournament.phase === "complete") return "last_completed";
-  if (!state.tournament.paused && state.tournament.phase !== "idle") return "live";
-  return "last_completed";
-}
-
 /** Rich completed demo round for mission control default view. */
 export function enrichMissionControlDemo(state: TournamentState): TournamentState {
   const ideas = enrichChallengeIdeas(state.tournament.challengeIdeas);
-  const evaluations = patchWinnerScore(state.tournament.evaluations);
   const completedAt = state.tournament.completedAt ?? minutesAgo(2);
   const selectedChallenge = state.tournament.selectedChallenge
     ? enrichSelectedChallenge(state.tournament.selectedChallenge, ideas)
     : null;
+  const evaluations = enrichFailReasons(
+    patchWinnerScore(state.tournament.evaluations),
+    state.tournament.activeRuns,
+    selectedChallenge ?? state.tournament.selectedChallenge!,
+  );
 
   const tournament = {
     ...state.tournament,
@@ -449,8 +483,7 @@ export function enrichMissionControlDemo(state: TournamentState): TournamentStat
       ? state.marketplace.slice(0, DEMO_MARKETPLACE_COUNT)
       : buildDemoMarketplace(DEMO_ROUND_ID, tournament.round, evaluations);
 
-  const history =
-    state.history.length > 5 ? state.history : buildDemoHistory(DEMO_ROUND_ID, tournament.round, completedAt);
+  const history = buildDemoHistory(DEMO_ROUND_ID, tournament.round, completedAt);
 
   return {
     ...state,

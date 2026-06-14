@@ -126,6 +126,8 @@ export type Evaluation = {
   penaltyTotal: number;
   totalScore: number;
   passed: boolean;
+  failReason?: string;
+  gateFailed?: string;
   constitutionVersion?: string;
   constitutionVersionId?: string;
 };
