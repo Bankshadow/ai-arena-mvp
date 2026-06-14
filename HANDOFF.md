@@ -218,6 +218,6 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
 | Date | Commit | Notes |
 |------|--------|-------|
 | 2026-06-14 | `a0f172b` | Tournament Supabase + LLM mock-first |
-| 2026-06-14 | _(this commit)_ | Phase A–D, migrations CLI, E2E, marketplace, account |
+| 2026-06-14 | `1c6872c` | Phase A–D, migrations CLI, E2E, marketplace, account |
 
 After push: confirm Vercel redeploy + run `npm run smoke:prod`.
