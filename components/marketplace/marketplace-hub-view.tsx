@@ -5,6 +5,7 @@ import { Layers, ShoppingBag, Sparkles } from "lucide-react";
 
 import { ComponentCard } from "@/components/marketplace/component-card";
 import { ComponentTypeBadge } from "@/components/marketplace/component-type-badge";
+import { MarketplaceSemanticSearch } from "@/components/vector/marketplace-semantic-search";
 import { useWorkflowStack } from "@/components/marketplace/stack-provider";
 import { Nav } from "@/components/Nav";
 import {
@@ -56,6 +57,10 @@ export function MarketplaceHubView() {
           </a>
           , with benchmark proof from AI ARENA tournaments.
         </p>
+
+        <div className="mt-8">
+          <MarketplaceSemanticSearch />
+        </div>
 
         <div className="mt-6 flex flex-wrap gap-3">
           <Link

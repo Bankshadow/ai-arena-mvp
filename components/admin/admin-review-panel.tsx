@@ -15,6 +15,7 @@ import type { AgentPersonaId } from "@/lib/agents/types";
 import { AGENT_PERSONAS } from "@/lib/agents/personas";
 
 import { Nav } from "@/components/Nav";
+import { AdminTournamentSettings } from "@/components/admin/admin-tournament-settings";
 import { useTranslations } from "@/components/i18n/locale-provider";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { computeCostScore, computeFinalScore } from "@/lib/supabase/scoring";
@@ -49,6 +50,7 @@ export function AdminReviewPanel() {
     Record<string, { qualityScore: string; adminNotes: string }>
   >({});
   const [actionId, setActionId] = useState<string | null>(null);
+  const [groqAvailable, setGroqAvailable] = useState(false);
 
   const load = useCallback(async () => {
     if (!adminReady) {
@@ -79,6 +81,13 @@ export function AdminReviewPanel() {
       setLoading(false);
     }
   }, [filter, adminReady, a.serviceRoleMissing]);
+
+  useEffect(() => {
+    fetch("/api/tournament/status")
+      .then((r) => r.json())
+      .then((d: { groqAvailable?: boolean }) => setGroqAvailable(Boolean(d.groqAvailable)))
+      .catch(() => setGroqAvailable(false));
+  }, []);
 
   useEffect(() => {
     fetch("/api/admin/status", { credentials: "include" })
@@ -189,6 +198,8 @@ export function AdminReviewPanel() {
         {!adminReady && (
           <p className="mt-4 text-sm text-red-400">{a.serviceRoleMissing}</p>
         )}
+
+        <AdminTournamentSettings groqAvailable={groqAvailable} />
 
         {error && (
           <p className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm text-red-300">

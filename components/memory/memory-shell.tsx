@@ -8,6 +8,7 @@ import { Nav } from "@/components/Nav";
 
 const LINKS = [
   { href: "/memory", label: "Dashboard" },
+  { href: "/memory/search", label: "Search" },
   { href: "/memory/articles", label: "Articles" },
   { href: "/memory/query", label: "Query" },
   { href: "/memory/compile", label: "Compile" },

@@ -24,7 +24,9 @@ export function RuntimeModeSelector({ value, groqAvailable, disabled, onChange }
       <h3 className="text-sm font-semibold uppercase tracking-wider text-zinc-400">
         Runtime mode
       </h3>
-      <p className="mt-1 text-xs text-zinc-500">Default is mock — no API calls unless Groq mode selected.</p>
+      <p className="mt-1 text-xs text-zinc-500">
+        Configure in Admin → Tournament engine settings. Default is Groq Free.
+      </p>
       <div className="mt-4 flex flex-wrap gap-2">
         {MODES.map((mode) => {
           const needsGroq = mode !== "mock";

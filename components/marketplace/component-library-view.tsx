@@ -7,6 +7,7 @@ import { Layers } from "lucide-react";
 
 import { ComponentCard } from "@/components/marketplace/component-card";
 import { ComponentFiltersBar } from "@/components/marketplace/component-filters-bar";
+import { MarketplaceSemanticSearch } from "@/components/vector/marketplace-semantic-search";
 import { useWorkflowStack } from "@/components/marketplace/stack-provider";
 import { Nav } from "@/components/Nav";
 import { filterComponents } from "@/lib/marketplace/mock-catalog";
@@ -52,6 +53,10 @@ export function ComponentLibraryView() {
             <Layers className="size-4" />
             Stack ({count})
           </Link>
+        </div>
+
+        <div className="mt-6">
+          <MarketplaceSemanticSearch />
         </div>
 
         <div className="mt-6">

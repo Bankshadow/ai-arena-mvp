@@ -120,4 +120,4 @@ export const RUNTIME_MODE_LABELS: Record<TournamentRuntimeMode, string> = {
   hybrid_quality: "Hybrid Quality",
 };
 
-export const DEFAULT_RUNTIME_MODE: TournamentRuntimeMode = "mock";
+export const DEFAULT_RUNTIME_MODE: TournamentRuntimeMode = "groq_free";

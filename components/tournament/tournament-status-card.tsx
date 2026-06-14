@@ -2,6 +2,7 @@ import type { Tournament, TournamentPhase } from "@/lib/tournament/types";
 import type { TournamentMode } from "@/lib/tournament/engine";
 import { getLoopIntervalMs } from "@/lib/tournament/engine";
 import {
+  DEFAULT_RUNTIME_MODE,
   RUNTIME_MODE_LABELS,
   type TournamentRuntimeMode,
 } from "@/lib/tournament/routing/types";
@@ -34,7 +35,7 @@ export function TournamentStatusCard({
   countdownSec,
   persistMessage,
   engineMode,
-  runtimeMode = "mock",
+  runtimeMode = DEFAULT_RUNTIME_MODE,
   supabaseConfigured,
   supabaseTableReady,
   supabaseHint,

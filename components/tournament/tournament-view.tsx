@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { History, Radio } from "lucide-react";
+import { Radio } from "lucide-react";
 
 import { AdminControls } from "@/components/tournament/admin-controls";
 import { ActiveBattlePanel } from "@/components/tournament/active-battle-panel";
@@ -19,7 +19,7 @@ import { useMemory } from "@/components/memory/memory-provider";
 import type { MemoryKnowledgeBase } from "@/lib/memory/store";
 import { runMemoryCompilePipeline } from "@/lib/memory/pipeline";
 import { RoutingDashboard } from "@/components/tournament/routing/routing-dashboard";
-import { RuntimeModeSelector } from "@/components/tournament/routing/runtime-mode-selector";
+import { TournamentJoinEvents } from "@/components/tournament/tournament-join-events";
 import { TournamentStatusCard } from "@/components/tournament/tournament-status-card";
 import { Nav } from "@/components/Nav";
 import {
@@ -30,6 +30,10 @@ import {
   type TournamentMode,
 } from "@/lib/tournament/engine";
 import { DEFAULT_RUNTIME_MODE, type TournamentRuntimeMode } from "@/lib/tournament/routing/types";
+import {
+  readTournamentAdminSettings,
+  resolveTournamentRuntimeMode,
+} from "@/lib/tournament/admin-settings";
 import type { ProviderStatus } from "@/lib/tournament/routing/types";
 import type { GuardAssessment } from "@/lib/tournament/routing/types";
 import type { TournamentEvent, TournamentState } from "@/lib/tournament/types";
@@ -63,7 +67,9 @@ export function TournamentView() {
   const [countdownSec, setCountdownSec] = useState<number | null>(null);
   const [persistMessage, setPersistMessage] = useState<string | null>(null);
   const [engineMode, setEngineMode] = useState<TournamentMode>("mock");
-  const [runtimeMode, setRuntimeMode] = useState<TournamentRuntimeMode>(DEFAULT_RUNTIME_MODE);
+  const [runtimeMode, setRuntimeMode] = useState<TournamentRuntimeMode>(() =>
+    readTournamentAdminSettings().defaultRuntimeMode,
+  );
   const [engineStatus, setEngineStatus] = useState<EngineStatus>({
     llmAvailable: false,
     groqAvailable: false,
@@ -83,8 +89,25 @@ export function TournamentView() {
   useEffect(() => {
     fetch("/api/tournament/status")
       .then((r) => r.json())
-      .then((data: EngineStatus) => {
+      .then((data: EngineStatus & { defaultRuntimeMode?: TournamentRuntimeMode }) => {
         setEngineStatus(data);
+        const adminMode = readTournamentAdminSettings().defaultRuntimeMode;
+        const effective = resolveTournamentRuntimeMode(
+          adminMode ?? data.defaultRuntimeMode ?? DEFAULT_RUNTIME_MODE,
+          data.groqAvailable,
+        );
+        setRuntimeMode(effective);
+        setState((s) => ({
+          ...s,
+          routing: {
+            runtimeMode: effective,
+            guard: s.routing?.guard ?? null,
+            routingTimeline: s.routing?.routingTimeline ?? [],
+            providerUsage: s.routing?.providerUsage ?? [],
+            costSavedEstimateUsd: s.routing?.costSavedEstimateUsd ?? 0,
+            agentModels: s.routing?.agentModels ?? {},
+          },
+        }));
       })
       .catch(() => {});
   }, []);
@@ -251,16 +274,11 @@ export function TournamentView() {
               5 minutes. Completed rounds auto-save.
             </p>
           </div>
-          <Link
-            href="/tournaments"
-            className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-zinc-300 hover:bg-white/10"
-          >
-            <History className="size-4 text-violet-400" />
-            Saved rounds
-          </Link>
         </header>
 
-        <div className="space-y-6">
+        <TournamentJoinEvents />
+
+        <div className="mt-6 space-y-6">
           <TournamentStatusCard
             tournament={state.tournament}
             countdownSec={countdownSec}
@@ -337,26 +355,6 @@ export function TournamentView() {
               } finally {
                 setBusy(false);
               }
-            }}
-          />
-
-          <RuntimeModeSelector
-            value={runtimeMode}
-            groqAvailable={engineStatus.groqAvailable}
-            disabled={busy}
-            onChange={(mode) => {
-              setRuntimeMode(mode);
-              setState((s) => ({
-                ...s,
-                routing: {
-                  runtimeMode: mode,
-                  guard: s.routing?.guard ?? null,
-                  routingTimeline: s.routing?.routingTimeline ?? [],
-                  providerUsage: s.routing?.providerUsage ?? [],
-                  costSavedEstimateUsd: s.routing?.costSavedEstimateUsd ?? 0,
-                  agentModels: s.routing?.agentModels ?? {},
-                },
-              }));
             }}
           />
 

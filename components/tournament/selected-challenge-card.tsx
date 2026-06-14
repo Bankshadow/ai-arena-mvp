@@ -1,5 +1,9 @@
+import Link from "next/link";
+import { ArrowRight } from "lucide-react";
+
 import type { Challenge } from "@/lib/tournament/types";
 import { getCreator } from "@/lib/tournament/agents";
+import { DEFAULT_CHALLENGE_SLUG } from "@/lib/constants";
 
 type Props = { challenge: Challenge | null };
 
@@ -28,6 +32,15 @@ export function SelectedChallengeCard({ challenge }: Props) {
         <Meta label="Creator" value={creator.name} />
         <Meta label="Pass gate" value={`${challenge.passThreshold}/100`} />
         <Meta label="Cost cap" value={`$${challenge.costLimitUsd.toFixed(2)}`} />
+      </div>
+      <div className="border-t border-white/10 px-5 py-3">
+        <Link
+          href={`/challenge/${DEFAULT_CHALLENGE_SLUG}`}
+          className="inline-flex items-center gap-1 text-xs text-emerald-300/90 hover:text-emerald-200"
+        >
+          View full challenge brief
+          <ArrowRight className="size-3.5" />
+        </Link>
       </div>
       <details className="border-t border-white/10 px-5 py-3">
         <summary className="cursor-pointer text-xs text-zinc-400">Source & format</summary>
