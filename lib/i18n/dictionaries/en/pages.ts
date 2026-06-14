@@ -63,13 +63,28 @@ export const admin = {
   eyebrow: "Admin",
   title: "Submission review",
   subtitle: "Challenge #1 — manual quality review and scoring",
-  warning: "Protected by HTTP Basic Auth when ADMIN_USERNAME and ADMIN_PASSWORD are set.",
+  warning:
+    "Live approve/reject uses /api/admin/* with HTTP Basic Auth in production (page stays public; demo queues always visible).",
   serviceRoleMissing: "Add SUPABASE_SERVICE_ROLE_KEY to enable approve/reject actions.",
   notConfigured: "Configure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.local.",
   supabaseError: "Supabase is not configured.",
   qualityError: "Quality score must be between 0 and 100.",
   empty: "No submissions in this filter.",
   refresh: "Refresh",
+  envChecking: "Checking admin environment…",
+  envCheckingDetail: "Demo dashboard is shown until Supabase service role is confirmed.",
+  envLiveTitle: "Live admin connected",
+  envLiveDetail:
+    "Submission review uses the service role. In production, your browser may prompt for Basic Auth on admin API calls.",
+  envDemoTitle: "Demo mode — live review unavailable",
+  envDemoDetail:
+    "Configure Supabase public keys + SUPABASE_SERVICE_ROLE_KEY to enable approve/reject. Demo queues below stay available.",
+  adminAuthMissingTitle: "Admin API credentials not set on server",
+  adminAuthMissingDetail:
+    "Set ADMIN_USERNAME and ADMIN_PASSWORD in production so /api/admin/* can authenticate approve/reject calls.",
+  authFailedTitle: "Admin authentication required",
+  authFailedDetail:
+    "Enter the ADMIN_USERNAME / ADMIN_PASSWORD when your browser prompts, then refresh this page.",
   filters: {
     pending: "Pending",
     approved: "Approved",

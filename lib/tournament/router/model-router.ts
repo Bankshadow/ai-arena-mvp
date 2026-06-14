@@ -1,58 +1,18 @@
-import { getGroqDefaultModel, hasGroqKey } from "@/lib/env";
-import { getProviderAdapter } from "@/lib/tournament/providers";
-import type { ProviderAdapter } from "@/lib/tournament/providers/types";
+import {
+  modelForTask,
+  resolveProvider,
+  usesRealApi,
+} from "@/lib/tournament/router/runtime-modes";
+import {
+  maxTokensForTask,
+  normalizeTaskType,
+  temperatureForTask,
+} from "@/lib/tournament/router/task-routes";
 import type {
-  ProviderId,
   RouteDecision,
   TaskType,
   TournamentRuntimeMode,
 } from "@/lib/tournament/routing/types";
-
-const TASK_PROVIDER: Record<TaskType, ProviderId> = {
-  challenge_generation: "groq",
-  competitor_run: "groq",
-  preliminary_judge: "groq",
-  final_judge: "mock",
-  benchmark_report: "mock",
-  marketplace_polish: "mock",
-};
-
-function usesRealApi(
-  runtimeMode: TournamentRuntimeMode,
-  provider: ProviderId,
-): boolean {
-  if (runtimeMode === "mock") return false;
-  if (provider === "mock") return false;
-  if (provider === "groq") {
-    return hasGroqKey() && (runtimeMode === "groq_free" || runtimeMode === "hybrid_quality");
-  }
-  return false;
-}
-
-function resolveProvider(
-  taskType: TaskType,
-  runtimeMode: TournamentRuntimeMode,
-): ProviderId {
-  const preferred = TASK_PROVIDER[taskType];
-  if (runtimeMode === "mock") return "mock";
-  if (preferred === "groq" && !hasGroqKey()) return "mock";
-  if (preferred === "mock") return "mock";
-  return preferred;
-}
-
-function modelFor(taskType: TaskType, provider: ProviderId, agentId?: string): string {
-  if (provider === "mock") return "mock-v1";
-  if (provider === "groq") {
-    if (agentId === "lean" || agentId === "fast") {
-      return process.env.TOURNAMENT_GROQ_MODEL_FAST?.trim() || "llama-3.1-8b-instant";
-    }
-    if (taskType === "challenge_generation") {
-      return process.env.TOURNAMENT_GROQ_MODEL_QUALITY?.trim() || getGroqDefaultModel();
-    }
-    return getGroqDefaultModel();
-  }
-  return "mock-v1";
-}
 
 export class ModelRouter {
   route(
@@ -60,24 +20,18 @@ export class ModelRouter {
     runtimeMode: TournamentRuntimeMode,
     agentId?: string,
   ): RouteDecision {
-    const provider = resolveProvider(taskType, runtimeMode);
-    const model = modelFor(taskType, provider, agentId);
-    const maxTokens =
-      taskType === "challenge_generation" ? 2048 : taskType === "competitor_run" ? 1200 : 800;
-    const temperature = taskType === "competitor_run" ? 0.35 : 0.5;
+    const normalized = normalizeTaskType(taskType);
+    const provider = resolveProvider(normalized, runtimeMode);
+    const model = modelForTask(normalized, provider, agentId);
 
     return {
-      taskType,
+      taskType: normalized,
       provider,
       model,
-      maxTokens,
-      temperature,
+      maxTokens: maxTokensForTask(normalized),
+      temperature: temperatureForTask(normalized),
       usesRealApi: usesRealApi(runtimeMode, provider),
     };
-  }
-
-  getAdapter(decision: RouteDecision): ProviderAdapter {
-    return getProviderAdapter(decision.provider);
   }
 
   /** Anthropic-equivalent cost counterfactual for savings estimate. */
@@ -89,3 +43,6 @@ export class ModelRouter {
 }
 
 export const modelRouter = new ModelRouter();
+
+export { normalizeTaskType, TASK_PROVIDER } from "@/lib/tournament/router/task-routes";
+export { resolveProvider, usesRealApi } from "@/lib/tournament/router/runtime-modes";

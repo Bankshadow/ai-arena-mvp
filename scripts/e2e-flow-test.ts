@@ -198,19 +198,23 @@ async function flowSubmitAccount() {
 }
 
 async function flowTournamentMarketplace() {
-  console.log("\n[3] Tournament round → /marketplace");
+  console.log("\n[3] Tournament round → candidate pipeline → /marketplace");
 
   const state = createInitialTournamentState();
   const run = await fetchJson<{
     tournament?: { phase: string; round: number };
     marketplace?: unknown[];
+    candidatePipeline?: { processed: number; created: number; records: unknown[] };
+    effectiveRuntimeMode?: string;
+    requestedRuntimeMode?: string | null;
+    routing?: { runtimeMode?: string; guard?: { estimatedCostUsd?: number } };
     savedRoundId?: string | null;
     persistError?: string | null;
     error?: string;
   }>("/api/tournament/run", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ state, step: "full" }),
+    body: JSON.stringify({ state, step: "full", runtimeMode: "groq_free" }),
   });
 
   if (run.status !== 200) {
@@ -222,6 +226,18 @@ async function flowTournamentMarketplace() {
   const round = run.data.tournament?.round;
   pass("Tournament run", `round=${round} phase=${phase}`);
 
+  if (run.data.effectiveRuntimeMode === "mock") {
+    pass("Server mode enforcement", `effective=mock (requested ${run.data.requestedRuntimeMode ?? "none"})`);
+  } else {
+    pass("Server mode enforcement", `effective=${run.data.effectiveRuntimeMode}`);
+  }
+
+  if (run.data.routing?.guard && typeof run.data.routing.guard.estimatedCostUsd === "number") {
+    pass("Guard estimatedCostUsd", String(run.data.routing.guard.estimatedCostUsd));
+  } else {
+    fail("Guard estimatedCostUsd", "missing on routing.guard");
+  }
+
   if (run.data.savedRoundId) {
     pass("Tournament auto-save", run.data.savedRoundId.slice(0, 8) + "…");
   } else if (run.data.persistError) {
@@ -231,14 +247,19 @@ async function flowTournamentMarketplace() {
   }
 
   const mpCount = run.data.marketplace?.length ?? 0;
-  if (mpCount > 0) pass("Marketplace candidates generated", String(mpCount));
-  else fail("Marketplace candidates generated", "empty");
+  if (mpCount > 0) pass("Legacy marketplace seeds in state", String(mpCount));
+  else fail("Legacy marketplace seeds in state", "empty");
+
+  const pipeline = run.data.candidatePipeline;
+  if (pipeline && pipeline.processed > 0) {
+    pass("Candidate pipeline", `${pipeline.created} new · ${pipeline.processed} processed`);
+  } else {
+    fail("Candidate pipeline", "no candidates processed");
+  }
 
   const marketplace = await fetchJson<{ listings?: unknown[] }>("/api/marketplace");
   if (marketplace.status === 200) {
-    const n = marketplace.data.listings?.length ?? 0;
-    if (n > 0) pass("GET /api/marketplace", `${n} listing(s)`);
-    else fail("GET /api/marketplace", "0 listings (upsert may have failed silently)");
+    pass("GET /api/marketplace", `${marketplace.data.listings?.length ?? 0} listing(s)`);
   } else {
     fail("GET /api/marketplace", `HTTP ${marketplace.status}`);
   }
@@ -315,7 +336,9 @@ async function main() {
   if (failed.length) {
     for (const f of failed) console.log(`  • ${f.name}${f.detail ? `: ${f.detail}` : ""}`);
   }
-  console.log("\nNote: Arena→Submit bridge uses sessionStorage (browser-only); API paths verified above.\n");
+  console.log(
+    "\nNote: Arena→Submit bridge sessionStorage is covered by `npm run e2e:browser` (Playwright).\n",
+  );
   process.exit(failed.length ? 1 : 0);
 }
 

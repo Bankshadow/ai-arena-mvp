@@ -18,6 +18,8 @@ import type { MemoryKnowledgeBase } from "@/lib/memory/store";
 import { runMemoryCompilePipeline } from "@/lib/memory/pipeline";
 import { TournamentJoinEvents } from "@/components/tournament/tournament-join-events";
 import { TournamentStatusCard } from "@/components/tournament/tournament-status-card";
+import { useTranslations } from "@/components/i18n/locale-provider";
+import { fillTemplate, translateRuntimeMode } from "@/lib/i18n/helpers";
 import { Nav } from "@/components/Nav";
 import {
   createInitialTournamentState,
@@ -51,6 +53,7 @@ import {
 type EngineStatus = {
   llmAvailable: boolean;
   groqAvailable: boolean;
+  premiumAvailable: boolean;
   supabaseConfigured: boolean;
   supabaseTableReady: boolean;
   supabaseCanSave: boolean;
@@ -59,6 +62,9 @@ type EngineStatus = {
 };
 
 export function TournamentView() {
+  const t = useTranslations();
+  const th = t.tournament.header;
+  const sb = t.tournament.sampleBanner;
   const { mergeKb } = useMemory();
   const [sampleMode, setSampleMode] = useState(true);
   const [replayMode, setReplayMode] = useState(false);
@@ -73,6 +79,7 @@ export function TournamentView() {
   const [engineStatus, setEngineStatus] = useState<EngineStatus>({
     llmAvailable: false,
     groqAvailable: false,
+    premiumAvailable: false,
     supabaseConfigured: false,
     supabaseTableReady: false,
     supabaseCanSave: false,
@@ -95,6 +102,7 @@ export function TournamentView() {
         const effective = resolveTournamentRuntimeMode(
           adminMode ?? data.defaultRuntimeMode ?? DEFAULT_RUNTIME_MODE,
           data.groqAvailable,
+          data.premiumAvailable ?? data.llmAvailable,
         );
         setRuntimeMode(effective);
         setState((s) => ({
@@ -264,6 +272,7 @@ export function TournamentView() {
     enrichLegacyCandidates(state).length,
     DEMO_MARKETPLACE_COUNT,
   );
+  const intervalMin = getLoopIntervalMs() / 60000;
 
   return (
     <div className="relative min-h-screen bg-[#030303] text-zinc-100">
@@ -276,14 +285,14 @@ export function TournamentView() {
           <div>
             <p className="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.25em] text-violet-400/90">
               <Radio className="size-3.5 animate-pulse text-emerald-400" />
-              Autonomous simulation
+              {th.eyebrow}
             </p>
-            <h1 className="mt-2 text-3xl font-semibold sm:text-4xl">Tournament Engine</h1>
+            <h1 className="mt-2 text-3xl font-semibold sm:text-4xl">{th.title}</h1>
             <p className="mt-2 max-w-2xl text-sm text-zinc-400">
-              AI agents generate challenges, compete, get judged, update the leaderboard, and seed
-              the marketplace —{" "}
-              <span className="text-violet-300">{runtimeMode.replace(/_/g, " ")}</span> loop every
-              5 minutes. Completed rounds auto-save.
+              {fillTemplate(th.description, {
+                runtimeMode: translateRuntimeMode(runtimeMode, t),
+                interval: String(intervalMin),
+              })}
             </p>
           </div>
         </header>
@@ -294,12 +303,10 @@ export function TournamentView() {
           <div className="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-cyan-500/25 bg-cyan-500/10 px-5 py-4">
             <div>
               <p className="font-mono text-xs uppercase tracking-wider text-cyan-300">
-                {replayMode ? "Replay mode · T-R12" : "Completed sample round · T-R12"}
+                {replayMode ? sb.replayEyebrow : sb.sampleEyebrow}
               </p>
               <p className="mt-1 text-sm text-zinc-300">
-                {replayMode
-                  ? "Step through the last completed round. Switch to live mode to start a fresh tournament loop."
-                  : "Showing a completed demo round. Run tournament now for a live loop, or open full replay."}
+                {replayMode ? sb.replayBody : sb.sampleBody}
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -308,7 +315,7 @@ export function TournamentView() {
                 onClick={() => setReplayMode(true)}
                 className="rounded-lg border border-white/10 px-3 py-2 text-xs text-zinc-300 hover:bg-white/5"
               >
-                Full replay →
+                {sb.fullReplay}
               </Link>
               <button
                 type="button"
@@ -320,7 +327,7 @@ export function TournamentView() {
                 }}
                 className="rounded-lg border border-violet-500/40 bg-violet-500/10 px-3 py-2 text-xs text-violet-200"
               >
-                Switch to live mode
+                {sb.switchLive}
               </button>
             </div>
           </div>
@@ -446,6 +453,7 @@ export function TournamentView() {
           <MissionControlRoutingSection
             routing={state.routing}
             groqAvailable={engineStatus.groqAvailable}
+            premiumAvailable={engineStatus.premiumAvailable}
           />
 
           <div className="grid gap-6 xl:grid-cols-2">

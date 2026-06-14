@@ -3,17 +3,18 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin-client";
 import type { MarketplaceListingRow } from "@/lib/supabase/types";
 import type { MarketplaceCandidate } from "@/lib/tournament/types";
 
-function slugify(title: string, agentId: string): string {
-  const base = `${agentId}-${title}`
+/** Stable slug for dedup — one listing per agent + challenge (no timestamp suffix). */
+export function stableMarketplaceSlug(agentId: string, challengeTitle: string): string {
+  const base = `${agentId}-${challengeTitle}`
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "")
-    .slice(0, 60);
-  return `${base}-${Date.now().toString(36).slice(-4)}`;
+    .slice(0, 80);
+  return base || `listing-${agentId}`;
 }
 
-function candidateToInsert(candidate: MarketplaceCandidate) {
-  const slug = slugify(candidate.challengeTitle, candidate.agentId);
+function candidateToRow(candidate: MarketplaceCandidate) {
+  const slug = stableMarketplaceSlug(candidate.agentId, candidate.challengeTitle);
   return {
     slug,
     title: `${candidate.agentName} · ${candidate.challengeTitle}`,
@@ -35,21 +36,71 @@ function candidateToInsert(candidate: MarketplaceCandidate) {
   };
 }
 
+export type MarketplaceUpsertResult = {
+  inserted: number;
+  updated: number;
+  error: string | null;
+};
+
+/**
+ * Legacy tournament listings — written only on admin Publish (not on round complete).
+ * Round pipeline uses marketplace_candidates via lib/marketplace/candidate-store.ts.
+ */
 export async function upsertMarketplaceCandidates(
   candidates: MarketplaceCandidate[],
-): Promise<{ inserted: number; error: string | null }> {
+): Promise<MarketplaceUpsertResult> {
   const admin = getSupabaseAdmin();
   const client = admin ?? getSupabase();
-  if (!client) return { inserted: 0, error: "Supabase not configured" };
+  if (!client) return { inserted: 0, updated: 0, error: "Supabase not configured" };
 
   let inserted = 0;
+  let updated = 0;
+
   for (const candidate of candidates.slice(0, 5)) {
-    const row = candidateToInsert(candidate);
-    const { error } = await client.from("marketplace_listings").insert(row);
-    if (!error) inserted++;
+    const row = candidateToRow(candidate);
+
+    const { data: existing, error: lookupError } = await client
+      .from("marketplace_listings")
+      .select("id, slug")
+      .eq("agent_id", candidate.agentId)
+      .eq("challenge_title", candidate.challengeTitle)
+      .maybeSingle();
+
+    if (lookupError) {
+      return { inserted, updated, error: lookupError.message };
+    }
+
+    if (existing) {
+      const { error: updateError } = await client
+        .from("marketplace_listings")
+        .update({
+          title: row.title,
+          agent_name: row.agent_name,
+          total_score: row.total_score,
+          marketplace_score: row.marketplace_score,
+          suggested_price_usd: row.suggested_price_usd,
+          status: row.status,
+          workflow_steps: row.workflow_steps,
+          prompt_template: row.prompt_template,
+          payload: row.payload,
+        })
+        .eq("id", existing.id);
+
+      if (updateError) {
+        return { inserted, updated, error: updateError.message };
+      }
+      updated++;
+      continue;
+    }
+
+    const { error: insertError } = await client.from("marketplace_listings").insert(row);
+    if (insertError) {
+      return { inserted, updated, error: insertError.message };
+    }
+    inserted++;
   }
 
-  return { inserted, error: null };
+  return { inserted, updated, error: null };
 }
 
 export async function fetchMarketplaceListings(

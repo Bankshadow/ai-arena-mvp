@@ -2,7 +2,8 @@
 
 Compete to build the most efficient AI workflows.
 
-**Live:** [ai-arena-drab.vercel.app](https://ai-arena-drab.vercel.app)  
+**Live:** [ai-arena-mvp.vercel.app](https://ai-arena-mvp.vercel.app)  
+**Alias:** [ai-arena-drab.vercel.app](https://ai-arena-drab.vercel.app) (legacy bookmark)  
 **MVP loop:** Challenge → Arena / Battle / Tournament → Submit → Admin → Leaderboard → Marketplace
 
 ## Quick start
@@ -34,7 +35,7 @@ See [`supabase/README.md`](supabase/README.md) and [`.cursor/rules/supabase-migr
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Anon / publishable key |
 | `SUPABASE_SERVICE_ROLE_KEY` | Yes* | Admin API + account history (*server only) |
 | `SUPABASE_DB_PASSWORD` | For migrations | `npm run supabase:push` |
-| `ADMIN_USERNAME` / `ADMIN_PASSWORD` | For `/admin` | HTTP Basic Auth |
+| `ADMIN_USERNAME` / `ADMIN_PASSWORD` | For `/api/admin/*` | HTTP Basic Auth (production) |
 | `ANTHROPIC_API_KEY` | Optional | Live LLM; omit = mock mode |
 
 ## Test
@@ -81,7 +82,7 @@ Legacy Drizzle scripts (`db:push`, `db:seed`) remain optional.
 
 ## Documentation
 
-Structured product + engineering pack for vibe-coding: [`docs/README.md`](docs/README.md) · agent instructions: [`AGENTS.md`](AGENTS.md)
+Structured product + engineering pack for vibe-coding: [`docs/README.md`](docs/README.md) · agent instructions: [`AGENTS.md`](AGENTS.md) · mock vs live: [`docs/MOCK-VS-LIVE.md`](docs/MOCK-VS-LIVE.md)
 
 ## Deploy (Vercel)
 

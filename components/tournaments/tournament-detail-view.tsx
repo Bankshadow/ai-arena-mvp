@@ -8,6 +8,7 @@ import { ActiveBattlePanel } from "@/components/tournament/active-battle-panel";
 import { ChallengeGeneratorSection } from "@/components/tournament/challenge-generator-section";
 import { LiveLeaderboard } from "@/components/tournament/live-leaderboard";
 import { Nav } from "@/components/Nav";
+import { fetchJson } from "@/lib/client/fetch-json";
 import { getLocalTournamentRound } from "@/lib/tournament/local-storage";
 import {
   getSampleTournamentRecord,
@@ -33,9 +34,10 @@ export function TournamentDetailView({ roundId }: Props) {
       }
 
       try {
-        const res = await fetch(`/api/tournament/rounds/${roundId}`);
-        if (res.ok) {
-          const data = (await res.json()) as SavedTournamentRecord;
+        const { ok, data } = await fetchJson<SavedTournamentRecord>(
+          `/api/tournament/rounds/${roundId}`,
+        );
+        if (ok && data) {
           setRecord(data);
           return;
         }

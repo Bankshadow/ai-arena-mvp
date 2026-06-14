@@ -1,5 +1,9 @@
+"use client";
+
 import { CheckCircle2, Circle, Loader2 } from "lucide-react";
 
+import { useTranslations } from "@/components/i18n/locale-provider";
+import { translateFlowStepStatus } from "@/lib/i18n/helpers";
 import type { TournamentFlowStep } from "@/lib/tournament/mission-control-demo";
 
 type Props = { steps: TournamentFlowStep[] };
@@ -17,15 +21,14 @@ const STATUS_STYLE = {
 };
 
 export function TournamentFlowTimeline({ steps }: Props) {
+  const t = useTranslations();
+  const ft = t.tournament.flowTimeline;
+
   return (
     <section className="glass-card overflow-hidden rounded-2xl border border-violet-500/15">
       <div className="border-b border-white/10 bg-gradient-to-r from-violet-500/10 to-transparent px-5 py-4">
-        <h3 className="text-sm font-semibold uppercase tracking-wider text-zinc-400">
-          Tournament flow timeline
-        </h3>
-        <p className="mt-1 text-xs text-zinc-500">
-          End-to-end autonomous loop from challenge generation to marketplace seeding
-        </p>
+        <h3 className="text-sm font-semibold uppercase tracking-wider text-zinc-400">{ft.title}</h3>
+        <p className="mt-1 text-xs text-zinc-500">{ft.subtitle}</p>
       </div>
 
       <ol className="divide-y divide-white/5">
@@ -49,7 +52,7 @@ export function TournamentFlowTimeline({ steps }: Props) {
                   <span
                     className={`rounded-full border px-2 py-0.5 text-[10px] uppercase ${STATUS_STYLE[step.status]}`}
                   >
-                    {step.status}
+                    {translateFlowStepStatus(step.status, t)}
                   </span>
                 </div>
                 <p className="mt-1 text-xs text-violet-300/80">{step.actor}</p>

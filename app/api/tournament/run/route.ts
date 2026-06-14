@@ -1,10 +1,15 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { processRoundCandidates } from "@/lib/marketplace/candidate-store";
 import { saveTournamentRound, ensureTournamentTableReady } from "@/lib/supabase/tournaments";
-import { upsertMarketplaceCandidates } from "@/lib/supabase/marketplace";
 import { runTournamentLoopAsync, type LoopStep } from "@/lib/tournament/engine";
-import { DEFAULT_RUNTIME_MODE } from "@/lib/tournament/routing/types";
+import { newId } from "@/lib/tournament/engine-mock";
+import {
+  resolveEffectiveRuntimeMode,
+  runtimeModeResolutionNote,
+} from "@/lib/tournament/routing/resolve-mode";
+import type { TournamentRuntimeMode } from "@/lib/tournament/routing/types";
 import { shouldAutoSaveTournament } from "@/lib/tournament/saved-tournament";
 import type { TournamentState } from "@/lib/tournament/types";
 
@@ -31,13 +36,20 @@ export async function POST(request: Request) {
   }
 
   const step = (parsed.data.step ?? "full") as LoopStep;
-  const runtimeMode =
-    parsed.data.runtimeMode ??
-    parsed.data.state.routing?.runtimeMode ??
-    DEFAULT_RUNTIME_MODE;
+  const requestedRuntimeMode =
+    parsed.data.runtimeMode ?? parsed.data.state.routing?.runtimeMode;
+  const effectiveRuntimeMode: TournamentRuntimeMode = resolveEffectiveRuntimeMode({
+    requested: requestedRuntimeMode,
+    stateMode: parsed.data.state.routing?.runtimeMode,
+  });
+  const modeNote = runtimeModeResolutionNote(requestedRuntimeMode, effectiveRuntimeMode);
 
   try {
-    const result = await runTournamentLoopAsync(parsed.data.state, step, runtimeMode);
+    const result = await runTournamentLoopAsync(
+      parsed.data.state,
+      step,
+      effectiveRuntimeMode,
+    );
     const nextState: TournamentState = {
       tournament: result.tournament,
       leaderboard: result.leaderboard,
@@ -48,8 +60,23 @@ export async function POST(request: Request) {
       memory: result.memory,
     };
 
+    if (modeNote) {
+      nextState.history = [
+        {
+          id: newId(),
+          tournamentId: nextState.tournament.id,
+          round: nextState.tournament.round,
+          type: "manual_run" as const,
+          message: modeNote,
+          timestamp: new Date().toISOString(),
+        },
+        ...nextState.history,
+      ].slice(0, 100);
+    }
+
     let savedRoundId: string | null = null;
     let persistError: string | null = null;
+    let candidatePipeline: Awaited<ReturnType<typeof processRoundCandidates>> | null = null;
 
     if (shouldAutoSaveTournament(nextState)) {
       const tableError = await ensureTournamentTableReady();
@@ -59,17 +86,25 @@ export async function POST(request: Request) {
         const saved = await saveTournamentRound(nextState, result.mode);
         savedRoundId = saved.id;
         persistError = saved.error;
-        if (nextState.marketplace.length > 0) {
-          await upsertMarketplaceCandidates(nextState.marketplace.slice(0, 5));
-        }
       }
+    }
+
+    if (
+      nextState.tournament.phase === "complete" &&
+      nextState.tournament.evaluations.length > 0
+    ) {
+      candidatePipeline = await processRoundCandidates(nextState);
     }
 
     return NextResponse.json({
       ...result,
+      requestedRuntimeMode: requestedRuntimeMode ?? null,
+      effectiveRuntimeMode,
+      modeResolutionNote: modeNote,
       savedRoundId,
       persistError,
-      engineLabel: result.engineLabel ?? runtimeMode,
+      candidatePipeline,
+      engineLabel: result.engineLabel ?? effectiveRuntimeMode,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

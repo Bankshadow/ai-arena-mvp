@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { hasAnthropicKey, hasGroqKey } from "@/lib/env";
+import { hasAnthropicKey, hasGroqKey, hasOpenAiKey } from "@/lib/env";
 import { checkTournamentSupabaseHealth } from "@/lib/supabase/health";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { getTournamentProviderStatus } from "@/lib/tournament/routing/status";
@@ -13,6 +13,7 @@ export async function GET() {
   return NextResponse.json({
     llmAvailable: hasAnthropicKey(),
     groqAvailable: hasGroqKey(),
+    premiumAvailable: hasAnthropicKey() || hasOpenAiKey(),
     defaultRuntimeMode: DEFAULT_RUNTIME_MODE,
     supabaseConfigured: isSupabaseConfigured(),
     supabaseTableReady: supabase.tableReady,

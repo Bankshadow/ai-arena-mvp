@@ -25,7 +25,8 @@ Heed deprecation notices (e.g. middleware → proxy migration).
 
 **AI ARENA** is a self-improving, tournament-tested AI workflow marketplace.
 
-- **Live:** https://ai-arena-drab.vercel.app
+**Live:** https://ai-arena-mvp.vercel.app  
+**Alias:** https://ai-arena-drab.vercel.app (same deployment family)
 - **Dev:** http://localhost:3005 (`npm run dev`)
 - **Stack:** Next.js 16, React 19, TypeScript, Tailwind CSS 4, Supabase, provider adapters
 
@@ -172,6 +173,8 @@ POST /api/tournament/run → runTournamentLoopAsync()
 | Constitution | `lib/constitution/mock-data.ts` | Supabase CRUD (planned) |
 
 **Never break the app when API keys are missing.**
+
+See [`docs/MOCK-VS-LIVE.md`](docs/MOCK-VS-LIVE.md) and `lib/runtime/modes.ts`.
 
 ---
 

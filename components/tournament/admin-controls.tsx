@@ -1,4 +1,8 @@
+"use client";
+
 import { Pause, Play, RefreshCw, Save, Sparkles, Swords, Scale, type LucideIcon } from "lucide-react";
+
+import { useTranslations } from "@/components/i18n/locale-provider";
 
 type Props = {
   busy: boolean;
@@ -23,24 +27,24 @@ export function AdminControls({
   onEvaluateOnly,
   onSave,
 }: Props) {
+  const c = useTranslations().tournament.adminControls;
+
   return (
     <section className="glass-card rounded-2xl border border-white/10 p-5">
-      <h3 className="text-sm font-semibold uppercase tracking-wider text-zinc-400">
-        9 · Admin controls
-      </h3>
-      <p className="mt-1 text-xs text-zinc-500">Manual overrides for the 5-minute autonomous loop</p>
+      <h3 className="text-sm font-semibold uppercase tracking-wider text-zinc-400">{c.title}</h3>
+      <p className="mt-1 text-xs text-zinc-500">{c.subtitle}</p>
 
       <div className="mt-4 flex flex-wrap gap-2">
-        <AdminBtn icon={RefreshCw} label="Run tournament now" onClick={onRunFull} disabled={busy} primary />
+        <AdminBtn icon={RefreshCw} label={c.runNow} onClick={onRunFull} disabled={busy} primary />
         {paused ? (
-          <AdminBtn icon={Play} label="Resume loop" onClick={onResume} disabled={busy} />
+          <AdminBtn icon={Play} label={c.resume} onClick={onResume} disabled={busy} />
         ) : (
-          <AdminBtn icon={Pause} label="Pause loop" onClick={onPause} disabled={busy} />
+          <AdminBtn icon={Pause} label={c.pause} onClick={onPause} disabled={busy} />
         )}
-        <AdminBtn icon={Sparkles} label="Generate only" onClick={onGenerateOnly} disabled={busy} />
-        <AdminBtn icon={Swords} label="Run agents only" onClick={onRunAgentsOnly} disabled={busy} />
-        <AdminBtn icon={Scale} label="Evaluate only" onClick={onEvaluateOnly} disabled={busy} />
-        <AdminBtn icon={Save} label="Save to Supabase again" onClick={onSave} disabled={busy} />
+        <AdminBtn icon={Sparkles} label={c.generateOnly} onClick={onGenerateOnly} disabled={busy} />
+        <AdminBtn icon={Swords} label={c.runAgentsOnly} onClick={onRunAgentsOnly} disabled={busy} />
+        <AdminBtn icon={Scale} label={c.evaluateOnly} onClick={onEvaluateOnly} disabled={busy} />
+        <AdminBtn icon={Save} label={c.saveAgain} onClick={onSave} disabled={busy} />
       </div>
     </section>
   );

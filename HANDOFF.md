@@ -1,21 +1,23 @@
 # AI ARENA — Handoff Log
 
-Date: 2026-06-14 | Prepared for Cursor / Claude | **Last updated: 2026-06-14 (Tournament Engine V2 architecture)**
+Date: 2026-06-14 | Prepared for Cursor / Claude | **Last updated: 2026-06-14 (Tournament Engine Phase 1)**
 
-Production: **https://ai-arena-drab.vercel.app** · Dev: **http://localhost:3005** · Repo: `Bankshadow/ai-arena-mvp`
+Production: **https://ai-arena-mvp.vercel.app** · Alias: **https://ai-arena-drab.vercel.app** · Dev: **http://localhost:3005** · Repo: `Bankshadow/ai-arena-mvp`
 
-**Architecture doc (Tournament V2):** [`docs/TOURNAMENT-ENGINE-V2.md`](docs/TOURNAMENT-ENGINE-V2.md)
+**Mock vs live:** [`docs/MOCK-VS-LIVE.md`](docs/MOCK-VS-LIVE.md) · **Architecture doc (Tournament V2):** [`docs/TOURNAMENT-ENGINE-V2.md`](docs/TOURNAMENT-ENGINE-V2.md) · **Marketplace:** [`docs/07-marketplace-stack-builder.md`](docs/07-marketplace-stack-builder.md)
 
 ---
 
 ## Project Overview
 
-**AI ARENA** — AI workflow efficiency competition platform.  
-AI Agent personas seed the leaderboard; humans compete via Arena, Submit, Battle, and Tournament. Tournament winners feed a workflow marketplace.
+**AI ARENA** — Tournament-tested AI workflow marketplace.  
+AI agents compete on real challenges; winning workflows, prompts, rubrics, and routing policies become reusable **components with benchmark proof**.
+
+**Product flow:** `Tournament → Proof → Component → Stack → Export`
 
 **Stack:** Next.js 16.2.6 (Turbopack), React 19, TypeScript, Supabase, Tailwind CSS, `@anthropic-ai/sdk`, Supabase CLI migrations
 
-**Mock mode:** No `ANTHROPIC_API_KEY` → Battle/Tournament/Arena judge use heuristics; Supabase persistence still works.
+**Mock mode:** No API keys → Battle/Tournament/Arena use heuristics; candidate pipeline falls back to in-memory store.
 
 ---
 
@@ -28,7 +30,7 @@ AI Agent personas seed the leaderboard; humans compete via Arena, Submit, Battle
 | Core | MVP6–9 | Battle (generate → run → history) | ✅ Done |
 | Core | Tournament | Mock/LLM loop, Supabase save, `/tournaments` | ✅ Done |
 | **A** | MVP10 | `/api/health`, `npm run smoke` / `smoke:prod` | ✅ Done |
-| **A** | MVP11 | Basic Auth on `/admin` + `/api/admin/*` | ✅ Done |
+| **A** | MVP11 | Basic Auth on `/api/admin/*` (page public + demo fallback) | ✅ Done |
 | **A** | MVP12 | RLS v2 — no public UPDATE on submissions | ✅ Done |
 | **B** | MVP13 | Unified leaderboard (humans + agents + battles + tournaments) | ✅ Done |
 | **B** | MVP14 | `/api/run-agent` persists to Supabase | ✅ Done |
@@ -36,14 +38,16 @@ AI Agent personas seed the leaderboard; humans compete via Arena, Submit, Battle
 | **C** | MVP16 | Enterprise AI Judge (`/api/judge-output`) | ✅ Done |
 | **C** | MVP17 | Arena → sessionStorage bridge → Submit/Battle/Enterprise | ✅ Done |
 | **C** | MVP18 | `/account` + email cookie + history API | ✅ Done |
-| **D** | MVP19 | Marketplace table + UI + tournament sync | ✅ Done |
+| **D** | MVP19 | Marketplace listings table + legacy UI | ✅ Done |
 | **D** | MVP20–21 | `/workflows/[slug]` clone prompt + export bundle | ✅ Done |
+| **MKT** | Phase 1 | Proof cards — `/marketplace`, `/components`, `/stack-builder` | ✅ Done (UI + mock catalog) |
+| **MKT** | Phase 2 | Tournament → candidate pipeline + admin review (no auto-publish) | ✅ Done · migration pushed |
 | Infra | Supabase CLI | `supabase/migrations/` + `npm run supabase:push` | ✅ Done |
 | Infra | E2E | `npm run e2e` — 19/19 checks (local) | ✅ Done |
 | **T-V2** | T-MVP1 | Mock tournament loop | ✅ Done |
-| **T-V2** | T-MVP2 | Groq-powered agent loop | ⏳ Designed — see TOURNAMENT-ENGINE-V2 |
-| **T-V2** | T-MVP3 | Hybrid judge (Groq + Claude/GPT final) | ⏳ Designed |
-| **T-V2** | T-MVP4 | Benchmark + marketplace polish | ⏳ Partial |
+| **T-V2** | T-MVP2 | Groq-powered agent loop + routing foundation | ✅ Phase 1 done · see task doc |
+| **T-V2** | T-MVP3 | Hybrid judge (Groq + Claude/GPT final) | ✅ Phase 2 done · see task doc |
+| **T-V2** | T-MVP4 | Benchmark + marketplace polish | ✅ Proof UI + candidate pipeline |
 | **T-V2** | T-MVP5 | Enterprise tournaments + audit | ⏳ Partial |
 
 ---
@@ -57,13 +61,15 @@ AI Agent personas seed the leaderboard; humans compete via Arena, Submit, Battle
 | `SUPABASE_SERVICE_ROLE_KEY` | **Yes for admin + account history** | Bypass RLS server-side |
 | `SUPABASE_DB_PASSWORD` | For `supabase:push` | CLI migration sync |
 | `SUPABASE_PROJECT_REF` | Optional | Parsed from URL if omitted |
-| `ADMIN_USERNAME` / `ADMIN_PASSWORD` | For `/admin` | HTTP Basic Auth |
+| `ADMIN_USERNAME` / `ADMIN_PASSWORD` | For `/api/admin/*` in production | HTTP Basic Auth |
 | `ANTHROPIC_API_KEY` | Optional | Live LLM (final judge, premium tasks); omit = mock |
 | `GROQ_API_KEY` | Optional (T-MVP2+) | Groq-first tournament loops (free tier, fast) |
 | `OPENAI_API_KEY` | Optional | GPT final judge / benchmark fallback |
+| `TOURNAMENT_ANTHROPIC_JUDGE_MODEL` | Optional | Override hybrid final judge model |
+| `TOURNAMENT_OPENAI_JUDGE_MODEL` | Optional | Override OpenAI final judge model |
 | `TOURNAMENT_DEFAULT_RUNTIME_MODE` | Optional | `free` \| `cheap` \| `quality` \| `enterprise` |
 
-Template: `env.import.example` → copy to `.env.local`  
+Template: `.env.example` → copy to `.env.local`  
 Vercel: `vercel.env.example` → import in dashboard, then redeploy.
 
 **Get service role key:** Supabase Dashboard → Project Settings → API → `service_role` (secret). Never expose to client.
@@ -78,15 +84,18 @@ npm run supabase:new -- x  # scaffold new migration
 npm run supabase:status    # migration list
 ```
 
-Migrations applied (2026-06-14):
+Migrations in repo:
 
 | File | Contents |
 |------|----------|
 | `20250101000000_submissions_and_battles.sql` | Core tables |
 | `20250102000000_tournament_rounds.sql` | Tournament snapshots |
-| `20250103000000_marketplace_listings.sql` | Marketplace |
+| `20250103000000_marketplace_listings.sql` | Legacy published listings |
 | `20250104000000_rls_v2_submissions.sql` | Tighter RLS |
-| `20250201000000_model_provider_routing.sql` | **T-V2** providers, profiles, usage logs (not applied until T-MVP2) |
+| `20250201000000_model_provider_routing.sql` | T-V2 providers, profiles, usage logs |
+| `20250202000000_agent_constitutions.sql` | Constitution schema |
+| `20250203000000_tournament_memory_compiler.sql` | Memory compiler tables |
+| `20250204000000_marketplace_candidates.sql` | Candidate review pipeline · **applied to remote** |
 
 Legacy snapshots (`schema.sql`, `rls-v2.sql`, …) are reference only. See `supabase/README.md`.
 
@@ -101,12 +110,13 @@ npm run dev          # :3005
 npm run build
 npm run smoke        # local health + pages
 npm run smoke:prod   # production URL
+npm run smoke:router   # tournament routing unit smoke (no server)
 npm run e2e          # 19 flow checks (needs dev server + env)
 ```
 
 **E2E flows verified:** Arena judge → pages · Submit (anon) → account history (service role) · Tournament → marketplace · Workflows clone UI.
 
-**Browser-only:** Arena sessionStorage bridge (Arena → prefill Submit/Enterprise).
+**Browser bridge:** `npm run e2e:browser` (Playwright) verifies Arena sessionStorage → Submit / Battle / Enterprise.
 
 ---
 
@@ -114,12 +124,31 @@ npm run e2e          # 19 flow checks (needs dev server + env)
 
 ```
 Submit form ──anon──► Supabase submissions (pending)
-Admin panel ──service role──► approve/reject (/api/admin/*)
+Admin panel ──service role──► approve/reject submissions (/api/admin/submissions/*)
+Admin panel ──► marketplace candidates (/api/admin/marketplace-candidates/*)
 Account history ──service role──► all statuses by email (/api/account/history)
 Arena / Enterprise ──► POST /api/judge-output ──► rankHuman()
-Tournament loop ──► POST /api/tournament/run ──► save round + upsert marketplace
+Tournament loop ──► POST /api/tournament/run
+                    ├── resolveEffectiveRuntimeMode() (server)
+                    ├── save round (tournament_rounds) when complete
+                    ├── processRoundCandidates() → marketplace_candidates
+                    └── ProviderUsageLogger → provider_usage_logs (best-effort)
+Admin Publish ──► promoteCandidateToComponent() → catalog + Stack Builder
 Unified leaderboard ──► lib/leaderboard/unified.ts
 ```
+
+### Marketplace candidate pipeline (Phase 2)
+
+| Step | Module |
+|------|--------|
+| Detect assets (6 types) | `lib/marketplace/candidate-pipeline.ts` → `detectMarketplaceCandidates()` |
+| Dedup key | `component_type + challenge_category + winning_agent + strategy_hash` |
+| Upsert + metrics | `lib/marketplace/candidate-store.ts` |
+| Mock fallback | `lib/marketplace/candidate-store-mock.ts` (in-memory when Supabase unavailable) |
+| Admin review | `detected` → `review_needed` → `approved` → **Publish** → `published` |
+| Catalog | `lib/marketplace/published-catalog.ts` + `refreshComponentCatalog()` |
+
+**Important:** Round complete does **not** write `marketplace_listings`. Listings upsert is legacy; publish goes through admin.
 
 ### Scoring (unchanged)
 
@@ -140,15 +169,18 @@ qualityAdj = qualityRaw − hallucinationPenalty − formatPenalty
 | `/arena` | Human vs AI (AI Judge) |
 | `/battle` | Token efficiency battle |
 | `/battles`, `/battles/[id]` | Battle history |
-| `/tournament` | Autonomous tournament loop |
+| `/tournament` | Autonomous tournament loop + proof pipeline panel |
 | `/tournaments`, `/tournaments/[id]` | Saved rounds |
 | `/leaderboard` | Unified rankings |
 | `/agents`, `/agents/[id]`, `/agents/report` | Agent roster + report |
 | `/workflows`, `/workflows/[slug]` | Workflow library + clone/export |
-| `/marketplace`, `/marketplace/[slug]` | Tournament → listings |
+| `/marketplace` | Marketplace hub (proof sections + flow strip) |
+| `/marketplace/[slug]` | Legacy Supabase listings |
+| `/components`, `/components/[id]` | Component catalog + proof detail (9 sections) |
+| `/stack-builder`, `/stacks/[id]` | Stack Builder + export (JSON/MD/Cursor/Claude) |
 | `/enterprise` | Private benchmark (AI Judge) |
 | `/account` | Email-based activity history |
-| `/admin` | Review + real agent runner (Basic Auth) |
+| `/admin` | Submissions + **marketplace candidate review** + demo dashboard |
 
 ### API highlights
 
@@ -157,33 +189,38 @@ qualityAdj = qualityRaw − hallucinationPenalty − formatPenalty
 | `GET /api/health` | Supabase + table readiness |
 | `POST /api/judge-output` | Arena + Enterprise scoring |
 | `POST /api/run-agent` | Live agent + optional Supabase persist |
-| `POST /api/tournament/run` | Loop step + auto-save + marketplace upsert |
+| `POST /api/tournament/run` | Loop step + **effectiveRuntimeMode** + candidate pipeline + usage log |
 | `GET /api/account/history?email=` | Submissions/battles/tournaments by email |
-| `GET /api/marketplace` | Listings from Supabase |
-| `/api/admin/*` | Basic Auth + service role |
+| `GET /api/marketplace` | Legacy listings from Supabase |
+| `GET /api/admin/marketplace-candidates` | Pending candidates (mock or Supabase) |
+| `POST /api/admin/marketplace-candidates/[id]/{approve\|reject\|publish\|archive}` | Review workflow |
+| `/api/admin/*` | Basic Auth + service role where configured |
 
 ---
 
-## Key files (new since MVP5)
+## Key files
 
 ```
 lib/
-  admin/auth.ts              — Basic Auth helpers
-  auth/user-cookie.ts        — Email cookie for /account
-  bridge/arena-output.ts       — sessionStorage bridge (MVP17)
-  enterprise/benchmark.ts    — Enterprise judge wrapper
-  leaderboard/unified.ts     — Merged leaderboard sources
-  supabase/admin-client.ts   — Service role client
-  supabase/agent-runs.ts     — Persist /api/run-agent
-  supabase/marketplace.ts    — Marketplace CRUD
-  workflows/catalog.ts       — Workflow slugs + export bundles
-middleware.ts                — Protect /admin routes
-scripts/
-  smoke-test.mjs             — Deploy smoke
-  e2e-flow-test.ts           — Full flow E2E
-  supabase-push.mjs          — Migration sync
-supabase/migrations/         — Source of truth for schema
-.cursor/rules/supabase-migrations.mdc
+  marketplace/
+    candidate-pipeline.ts      — detect, dedup, metrics, evidence
+    candidate-store.ts         — upsert, processRoundCandidates, admin transitions
+    candidate-store-mock.ts    — in-memory fallback
+    published-catalog.ts       — promoteCandidateToComponent
+    mock-catalog.ts            — static + published components
+    component-proof-card.tsx   — (components/marketplace/) proof UI
+  tournament/
+    loop-service.ts, routed-loop.ts, engine-mock.ts
+  supabase/
+    marketplace-candidates.ts  — candidate CRUD
+    marketplace.ts             — legacy listings (publish-only path)
+  admin/auth.ts                — Basic Auth on /api/admin/*
+components/
+  admin/admin-marketplace-candidates-panel.tsx
+  marketplace/marketplace-hub-view.tsx, stack-builder-view.tsx
+app/api/tournament/run/route.ts
+supabase/migrations/20250204000000_marketplace_candidates.sql
+docs/TASK-PHASE1-TOURNAMENT-ENGINE.md   — Tournament Engine Phase 1 (complete)
 ```
 
 ---
@@ -193,22 +230,28 @@ supabase/migrations/         — Source of truth for schema
 | Item | Detail |
 |------|--------|
 | Vercel env | Production needs Supabase URL/keys + `SUPABASE_SERVICE_ROLE_KEY` + `ADMIN_*` |
-| Arena bridge | sessionStorage — manual browser test only |
-| Marketplace listings | Grow on each tournament save (no dedup yet) |
-| i18n | Tournament/battle/marketplace pages mostly EN labels in UI |
-| Legacy Drizzle | `db/*` + `docs/DATABASE.md` Drizzle section — optional, not MVP path |
+| Production URL | Canonical: `ai-arena-mvp.vercel.app` · alias: `ai-arena-drab.vercel.app` |
+| Arena bridge | Playwright `npm run e2e:browser` — sessionStorage → Submit/Battle/Enterprise |
+| `marketplace_candidates` table | Applied via `supabase:push` (2026-06-14) |
+| Candidate store | Works in-memory without Supabase; persists when table + service role ready |
+| Legacy listings | `marketplace_listings` dedup `(agent_id, challenge_title)` — not used on round complete |
+| i18n | Tournament/battle/marketplace routing UI — EN + TH dictionaries | ✅ Done (core shells) |
+| Default runtime mode | Code default is **`mock`**; Groq modes require `GROQ_API_KEY` |
 
 ---
 
-## Next steps (Tournament V2 — priority)
+## Next steps (ordered — do one at a time)
 
-1. **T-MVP2** — Implement Groq adapter + router + `loop-service.ts` (Cursor prompt in `docs/TOURNAMENT-ENGINE-V2.md` §10)
-2. Run migration `20250201000000_model_provider_routing.sql` via `npm run supabase:push`
-3. **T-MVP3** — Hybrid final judge in Quality mode
-4. Tournament UI: Runtime Mode selector, Groq usage card, rate limit badge
-5. Marketplace dedup + review workflow (`seed` → `review` → `listed`)
-6. i18n for new tournament UI
-7. Playwright E2E for sessionStorage bridge
+| # | Task | Status |
+|---|------|--------|
+| **1** | Sync HANDOFF with marketplace Phase 1/2 | ✅ Done |
+| **2** | `npm run supabase:push` — `marketplace_candidates` | ✅ Done |
+| **3** | Tournament Engine Phase 1 — [`docs/TASK-PHASE1-TOURNAMENT-ENGINE.md`](docs/TASK-PHASE1-TOURNAMENT-ENGINE.md) | ✅ Done |
+| **4** | T-MVP3 — Hybrid final judge (Anthropic/OpenAI adapters) · [`docs/TASK-PHASE2-HYBRID-JUDGE.md`](docs/TASK-PHASE2-HYBRID-JUDGE.md) | ✅ Done |
+| **5** | i18n for tournament / marketplace routing UI | ✅ Done |
+| **6** | Playwright E2E for sessionStorage bridge | ✅ Done |
+
+**Note:** Phase 1 + Phase 2 (hybrid judge) complete — run `npm run smoke:router` for routing checks.
 
 ---
 
@@ -230,5 +273,6 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
 |------|--------|-------|
 | 2026-06-14 | `a0f172b` | Tournament Supabase + LLM mock-first |
 | 2026-06-14 | `1c6872c` | Phase A–D, migrations CLI, E2E, marketplace, account |
+| 2026-06-14 | (local) | Stabilization pass + marketplace proof Phase 1/2 |
 
 After push: confirm Vercel redeploy + run `npm run smoke:prod`.

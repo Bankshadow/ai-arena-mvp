@@ -1,154 +1,129 @@
+import { detectMarketplaceCandidates } from "@/lib/marketplace/candidate-pipeline";
+import { listMarketplaceCandidates } from "@/lib/marketplace/candidate-store";
+import { getPublishedComponents } from "@/lib/marketplace/published-catalog";
 import { computeArenaScore } from "@/lib/marketplace/arena-score";
 import { getComponentById, getMockComponentCatalog } from "@/lib/marketplace/mock-catalog";
-import type {
-  ComponentPerformanceProof,
-  ComponentType,
-  MarketplaceCandidateV2,
-  MarketplaceComponent,
-} from "@/lib/marketplace/types";
+import type { MarketplaceCandidateV2, MarketplaceCandidateRecord } from "@/lib/marketplace/types";
 import type { TournamentState } from "@/lib/tournament/types";
 
-function proofFromEval(
-  totalScore: number,
-  costUsd: number,
-  tokens: number,
-  round: number,
-): ComponentPerformanceProof {
+function mapStatusToLegacy(
+  status: MarketplaceCandidateRecord["status"],
+): MarketplaceCandidateV2["status"] {
+  if (status === "published") return "listed";
+  if (status === "approved" || status === "review_needed") return "review";
+  return "seed";
+}
+
+function recordToV2(record: MarketplaceCandidateRecord): MarketplaceCandidateV2 {
   return {
-    win_rate: totalScore >= 70 ? 0.55 + (totalScore - 70) * 0.015 : 0.35,
-    avg_score: totalScore,
-    avg_cost_usd: costUsd,
-    avg_tokens: tokens,
-    best_category: totalScore >= 80 ? "quality" : "cost efficiency",
-    worst_category: "latency",
-    tournament_runs: round + 5,
-    benchmark_history: [
-      { round: Math.max(1, round - 1), score: totalScore - 3, cost: costUsd * 1.05 },
-      { round, score: totalScore, cost: costUsd },
-    ],
-    recommended_use_cases: ["Executive summary workflows", "Tournament automation"],
-    last_tournament_at: new Date().toISOString(),
+    id: record.id,
+    component_id: record.component_id ?? `cand-${record.component_type}-${record.source_round}`,
+    slug: record.dedup_key,
+    type: record.component_type,
+    title: record.title,
+    tournament_id: record.tournament_id,
+    round: record.source_round,
+    agent_id: record.agent_id,
+    agent_name: record.agent_name,
+    challenge_title: record.challenge_title,
+    total_score: record.total_score,
+    marketplace_score: record.marketplace_score,
+    proof: record.proof,
+    arena_score: record.arena_score,
+    status: mapStatusToLegacy(record.status),
+    candidate_status: record.status,
+    tested_runs: record.tested_runs,
+    evidence: record.evidence,
+    created_at: record.created_at,
   };
 }
 
-function candidateFromComponent(
-  component: MarketplaceComponent,
-  state: TournamentState,
-  totalScore: number,
-  status: MarketplaceCandidateV2["status"] = "seed",
-): MarketplaceCandidateV2 {
-  return {
-    id: `cand-${component.id}-r${state.tournament.round}`,
-    component_id: component.id,
-    slug: component.slug,
-    type: component.type,
-    title: component.title,
-    tournament_id: state.tournament.id,
-    round: state.tournament.round,
-    total_score: totalScore,
-    marketplace_score: Math.round((totalScore / 100) * 10 * 10) / 10,
-    proof: component.proof,
-    arena_score: component.arena_score,
-    status,
-    created_at: new Date().toISOString(),
-  };
-}
-
-function mapAgentToConstitutionComponent(agentId: string): MarketplaceComponent | undefined {
+function mapAgentToConstitutionComponent(agentId: string) {
   const match = getMockComponentCatalog().find(
     (c) =>
       c.type === "agent_constitution" &&
       (c.tags.includes(agentId) || c.title.toLowerCase().includes(agentId)),
   );
-  return match ?? getComponentById(`comp-const-lean-operator-v1.2`);
+  return match ?? getComponentById("comp-lean-operator-v12");
 }
 
-/** Detect typed marketplace candidates from a completed tournament state. */
+/** Detect typed marketplace candidates from a completed tournament state (sync UI helper). */
 export function detectCandidatesFromTournamentState(
   state: TournamentState,
 ): MarketplaceCandidateV2[] {
-  const candidates: MarketplaceCandidateV2[] = [];
-  const round = state.tournament.round;
-  if (round === 0 && state.tournament.evaluations.length === 0) return candidates;
+  const drafts = detectMarketplaceCandidates(state);
+  if (drafts.length === 0) return [];
 
-  const evaluations = [...state.tournament.evaluations].sort((a, b) => b.totalScore - a.totalScore);
-  const winner = evaluations[0];
-  const challenge = state.tournament.selectedChallenge;
+  const winner = [...state.tournament.evaluations].sort((a, b) => b.totalScore - a.totalScore)[0];
+  const winRate = winner && winner.passed ? 0.55 + winner.totalScore / 200 : 0.35;
 
-  if (winner) {
-    const run = state.tournament.activeRuns.find((r) => r.agentId === winner.agentId);
-    const agentComponent = mapAgentToConstitutionComponent(winner.agentId);
-    if (agentComponent) {
-      candidates.push({
-        ...candidateFromComponent(agentComponent, state, winner.totalScore),
-        agent_id: winner.agentId,
-        agent_name: winner.agentName,
-        challenge_title: challenge?.title,
-      });
-    }
-  }
+  return drafts.map((draft) => {
+    const proof = {
+      win_rate: winRate,
+      avg_score: draft.avg_score,
+      avg_cost_usd: draft.avg_cost,
+      avg_tokens: draft.avg_tokens,
+      avg_latency_ms: draft.avg_latency,
+      best_category: draft.avg_score >= 80 ? "quality" : "cost efficiency",
+      worst_category: "latency",
+      tournament_runs: 1,
+      benchmark_history: [{ round: draft.source_round, score: draft.avg_score, cost: draft.avg_cost }],
+      recommended_use_cases: ["Executive summary workflows"],
+      last_tournament_at: new Date().toISOString(),
+    };
 
-  if (challenge) {
-    const challengeComp =
-      getMockComponentCatalog().find((c) => c.type === "challenge_template") ??
-      getComponentById("comp-q4-board-challenge");
-    if (challengeComp) {
-      candidates.push({
-        ...candidateFromComponent(challengeComp, state, winner?.totalScore ?? 72),
-        challenge_title: challenge.title,
-        status: "review",
-      });
-    }
-  }
+    const component =
+      draft.component_type === "agent_constitution" && draft.agent_id
+        ? mapAgentToConstitutionComponent(draft.agent_id)
+        : getMockComponentCatalog().find((c) => c.type === draft.component_type);
 
-  if (state.routing && state.routing.costSavedEstimateUsd > 0) {
-    const router = getComponentById("comp-groq-tournament-router");
-    if (router) {
-      candidates.push(candidateFromComponent(router, state, 81, "seed"));
-    }
-  }
-
-  const passed = evaluations.filter((e) => e.passed).slice(0, 2);
-  for (const ev of passed) {
-    const wf = getComponentById("comp-exec-summary-workflow");
-    if (wf && !candidates.some((c) => c.component_id === wf.id)) {
-      const run = state.tournament.activeRuns.find((r) => r.agentId === ev.agentId);
-      candidates.push({
-        ...candidateFromComponent(wf, state, ev.totalScore),
-        agent_id: ev.agentId,
-        agent_name: ev.agentName,
-        challenge_title: challenge?.title,
-      });
-    }
-  }
-
-  if (state.constitution?.marketplaceCandidateIds.length) {
-    for (const mktId of state.constitution.marketplaceCandidateIds) {
-      const versionId = mktId.replace("mkt-const-", "");
-      const comp = getMockComponentCatalog().find((c) => c.id.includes(versionId.split("-").pop() ?? ""));
-      if (comp && !candidates.some((c) => c.component_id === comp.id)) {
-        candidates.push(candidateFromComponent(comp, state, winner?.totalScore ?? 75, "review"));
-      }
-    }
-  }
-
-  return candidates.slice(0, 6);
+    return {
+      id: `cand-${draft.dedup_key}`,
+      component_id: component?.id ?? `comp-${draft.component_type}`,
+      slug: draft.dedup_key,
+      type: draft.component_type,
+      title: draft.title,
+      tournament_id: draft.tournament_id,
+      round: draft.source_round,
+      agent_id: draft.agent_id,
+      agent_name: draft.agent_name,
+      challenge_title: draft.challenge_title,
+      total_score: draft.total_score,
+      marketplace_score: draft.marketplace_score,
+      proof,
+      arena_score: computeArenaScore(proof),
+      status: mapStatusToLegacy(draft.initial_status),
+      candidate_status: draft.initial_status,
+      tested_runs: 1,
+      created_at: new Date().toISOString(),
+    };
+  });
 }
 
 /** Map legacy MarketplaceCandidate rows to V2 for display. */
-export function enrichLegacyCandidates(
-  state: TournamentState,
-): MarketplaceCandidateV2[] {
+export function enrichLegacyCandidates(state: TournamentState): MarketplaceCandidateV2[] {
   const detected = detectCandidatesFromTournamentState(state);
   if (detected.length > 0) return detected;
 
   return state.marketplace.map((m) => {
-    const p = proofFromEval(m.totalScore, 0.003, 2000, m.round);
+    const p = {
+      win_rate: m.totalScore >= 70 ? 0.55 : 0.35,
+      avg_score: m.totalScore,
+      avg_cost_usd: 0.003,
+      avg_tokens: 2000,
+      avg_latency_ms: 800,
+      best_category: "quality",
+      worst_category: "latency",
+      tournament_runs: m.round + 5,
+      benchmark_history: [{ round: m.round, score: m.totalScore, cost: 0.003 }],
+      recommended_use_cases: ["Executive summary workflows"],
+      last_tournament_at: m.createdAt,
+    };
     return {
       id: m.id,
-      component_id: mapAgentToConstitutionComponent(m.agentId)?.id ?? "comp-exec-summary-workflow",
+      component_id: mapAgentToConstitutionComponent(m.agentId)?.id ?? "comp-low-cost-exec-workflow",
       slug: m.id,
-      type: "workflow_template" as ComponentType,
+      type: "workflow_template" as const,
       title: `${m.agentName} Workflow`,
       tournament_id: m.tournamentId,
       round: m.round,
@@ -164,3 +139,44 @@ export function enrichLegacyCandidates(
     };
   });
 }
+
+/** Async — includes persisted candidates from store (admin / post-round). */
+export async function loadCandidateProofCards(
+  state: TournamentState,
+): Promise<MarketplaceCandidateV2[]> {
+  const fromState = detectCandidatesFromTournamentState(state);
+  const pending = await listMarketplaceCandidates({
+    status: ["detected", "review_needed", "approved", "draft"],
+    limit: 12,
+  });
+  const published = getPublishedComponents();
+
+  if (pending.length === 0 && fromState.length > 0) return fromState.slice(0, 6);
+  if (pending.length > 0) return pending.map(recordToV2).slice(0, 6);
+
+  if (published.length > 0) {
+    return published.slice(0, 4).map((c) => ({
+      id: c.id,
+      component_id: c.id,
+      slug: c.slug,
+      type: c.type,
+      title: c.title,
+      tournament_id: c.source_tournament_id ?? state.tournament.id,
+      round: c.source_round ?? state.tournament.round,
+      total_score: c.proof.avg_score,
+      marketplace_score: c.suggested_price_usd,
+      proof: c.proof,
+      arena_score: c.arena_score,
+      status: "listed" as const,
+      candidate_status: "published" as const,
+      tested_runs: c.proof.tournament_runs,
+      evidence: c.evidence,
+      created_at: c.created_at,
+    }));
+  }
+
+  return fromState.slice(0, 6);
+}
+
+// Back-compat alias
+export { detectMarketplaceCandidates as detectMarketplaceCandidatesFromState };

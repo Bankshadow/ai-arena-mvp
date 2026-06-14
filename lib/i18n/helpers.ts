@@ -1,4 +1,7 @@
 import type { Dictionary } from "@/lib/i18n/types";
+import type { TournamentRuntimeMode } from "@/lib/tournament/routing/types";
+import type { TournamentViewMode } from "@/lib/tournament/view-mode-labels";
+import type { Tournament } from "@/lib/tournament/types";
 
 export function translateChallengeStatus(
   status: string,
@@ -51,3 +54,60 @@ export const INTEREST_API_VALUES = {
 export type InterestKey = keyof typeof INTEREST_API_VALUES;
 
 export const INTEREST_KEYS: InterestKey[] = ["compete", "submitChallenge", "company"];
+
+export function translateRuntimeMode(mode: TournamentRuntimeMode, t: Dictionary): string {
+  return t.tournament.runtimeMode[mode];
+}
+
+export function translateRuntimeModeHint(mode: TournamentRuntimeMode, t: Dictionary): string {
+  return t.tournament.runtimeMode.hints[mode];
+}
+
+export function translateTournamentPhase(phase: Tournament["phase"], t: Dictionary): string {
+  return t.tournament.status.phases[phase];
+}
+
+export function translateViewModeStatus(mode: TournamentViewMode, t: Dictionary): string {
+  return t.tournament.status.viewModes[mode];
+}
+
+export function translateViewModeRunsStat(mode: TournamentViewMode, t: Dictionary): string {
+  return t.tournament.status.runsStat[mode];
+}
+
+export function translateViewModeCta(
+  mode: TournamentViewMode,
+  t: Dictionary,
+): { runNow: string; replay: string; switchLive: string } {
+  return t.tournament.status.cta[mode];
+}
+
+export function translateGuardAction(action: string, t: Dictionary): string {
+  const key = action as keyof Dictionary["tournament"]["routing"]["guardActions"];
+  return t.tournament.routing.guardActions[key] ?? action.replace(/_/g, " ");
+}
+
+export function translateRiskLevel(level: "low" | "medium" | "high", t: Dictionary): string {
+  return t.tournament.routing.riskLevels[level];
+}
+
+export function translateFlowStepStatus(
+  status: "complete" | "active" | "pending",
+  t: Dictionary,
+): string {
+  return t.tournament.flowTimeline.stepStatus[status];
+}
+
+export function translateProviderCardStatus(
+  status: "active" | "configurable" | "disabled" | "not_configured",
+  t: Dictionary,
+): string {
+  return t.tournament.routing.providerStatusLabels[status];
+}
+
+export function fillTemplate(template: string, vars: Record<string, string | number>): string {
+  return Object.entries(vars).reduce(
+    (text, [key, value]) => text.replaceAll(`{${key}}`, String(value)),
+    template,
+  );
+}

@@ -93,6 +93,10 @@ export type LoopServiceResult = TournamentLoopResult & {
   memoryKb?: Partial<MemoryKnowledgeBase>;
 };
 
+/**
+ * Async tournament loop with multi-provider routing.
+ * Mock-first: rate-limit blocks and provider errors recurse into mock mode (see docs/MOCK-VS-LIVE.md).
+ */
 export async function runTournamentLoopWithRouting(
   state: TournamentState,
   step: LoopStep = "full",
@@ -133,6 +137,7 @@ export async function runTournamentLoopWithRouting(
       step,
       runtimeMode,
       competitorCount: competitors,
+      guard,
       existing: {
         challengeIdeas: t.challengeIdeas,
         selectedChallenge: t.selectedChallenge,

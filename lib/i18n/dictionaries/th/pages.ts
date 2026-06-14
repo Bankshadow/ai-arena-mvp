@@ -60,13 +60,27 @@ export const admin = {
   eyebrow: "แอดมิน",
   title: "ตรวจสอบผลงาน",
   subtitle: "Challenge #1 — ให้คะแนนคุณภาพด้วยตนเอง",
-  warning: "ป้องกันด้วย HTTP Basic Auth เมื่อตั้ง ADMIN_USERNAME และ ADMIN_PASSWORD",
+  warning:
+    "การอนุมัติ/ปฏิเสธจริงใช้ /api/admin/* พร้อม Basic Auth ใน production (หน้าแอดมินเปิดได้เสมอ มี demo queue)",
   serviceRoleMissing: "เพิ่ม SUPABASE_SERVICE_ROLE_KEY เพื่ออนุมัติ/ปฏิเสธผลงาน",
   notConfigured: "ตั้งค่า NEXT_PUBLIC_SUPABASE_URL และ NEXT_PUBLIC_SUPABASE_ANON_KEY ใน .env.local",
   supabaseError: "ยังไม่ได้ตั้งค่า Supabase",
   qualityError: "คะแนนคุณภาพต้องอยู่ระหว่าง 0–100",
   empty: "ไม่มีผลงานในตัวกรองนี้",
   refresh: "รีเฟรช",
+  envChecking: "กำลังตรวจสอบสภาพแวดล้อมแอดมิน…",
+  envCheckingDetail: "แสดง demo dashboard จนกว่าจะยืนยัน service role ของ Supabase",
+  envLiveTitle: "เชื่อมต่อแอดมินแบบ live แล้ว",
+  envLiveDetail:
+    "ใช้ service role ในการตรวจผลงาน ใน production บราวเซอร์อาจถาม Basic Auth สำหรับ API แอดมิน",
+  envDemoTitle: "โหมด demo — ยังตรวจผลงาน live ไม่ได้",
+  envDemoDetail:
+    "ตั้งค่า Supabase + SUPABASE_SERVICE_ROLE_KEY เพื่ออนุมัติ/ปฏิเสธ คิว demo ด้านล่างยังใช้ได้",
+  adminAuthMissingTitle: "ยังไม่ได้ตั้งค่า ADMIN_USERNAME / ADMIN_PASSWORD บนเซิร์ฟเวอร์",
+  adminAuthMissingDetail:
+    "ตั้งค่าใน production เพื่อให้ /api/admin/* ยืนยันตัวตนก่อนอนุมัติ/ปฏิเสธ",
+  authFailedTitle: "ต้องยืนยันตัวตนแอดมิน",
+  authFailedDetail: "ใส่ ADMIN_USERNAME / ADMIN_PASSWORD เมื่อบราวเซอร์ถาม แล้วรีเฟรชหน้านี้",
   filters: {
     pending: "รอตรวจ",
     approved: "อนุมัติ",

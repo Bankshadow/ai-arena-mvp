@@ -15,11 +15,12 @@ import type { AgentPersonaId } from "@/lib/agents/types";
 import { AGENT_PERSONAS } from "@/lib/agents/personas";
 
 import { Nav } from "@/components/Nav";
+import { AdminEnvNotice, type AdminEnvStatus } from "@/components/admin/admin-env-notice";
 import { AdminMockDashboard } from "@/components/admin/admin-mock-dashboard";
+import { AdminMarketplaceCandidatesPanel } from "@/components/admin/admin-marketplace-candidates-panel";
 import { AdminRoutingPanel } from "@/components/admin/admin-routing-panel";
 import { AdminTournamentSettings } from "@/components/admin/admin-tournament-settings";
 import { useTranslations } from "@/components/i18n/locale-provider";
-import { isSupabaseConfigured } from "@/lib/supabase";
 import { computeCostScore, computeFinalScore } from "@/lib/supabase/scoring";
 import type { SubmissionRow, SubmissionStatus } from "@/lib/supabase/types";
 import { DEFAULT_CHALLENGE_SLUG } from "@/lib/constants";
@@ -42,10 +43,12 @@ export function AdminReviewPanel() {
     { value: "all", label: a.filters.all },
   ];
   const [adminReady, setAdminReady] = useState(false);
-  const configured = isSupabaseConfigured();
+  const [adminStatus, setAdminStatus] = useState<AdminEnvStatus | null>(null);
+  const [statusChecked, setStatusChecked] = useState(false);
+  const [authFailed, setAuthFailed] = useState(false);
   const [filter, setFilter] = useState<Filter>("pending");
   const [rows, setRows] = useState<SubmissionRow[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<
@@ -53,6 +56,7 @@ export function AdminReviewPanel() {
   >({});
   const [actionId, setActionId] = useState<string | null>(null);
   const [groqAvailable, setGroqAvailable] = useState(false);
+  const [premiumAvailable, setPremiumAvailable] = useState(false);
 
   const load = useCallback(async () => {
     if (!adminReady) {
@@ -83,26 +87,43 @@ export function AdminReviewPanel() {
     } finally {
       setLoading(false);
     }
-  }, [filter, adminReady, a.serviceRoleMissing]);
+  }, [filter, adminReady]);
 
   useEffect(() => {
     fetch("/api/tournament/status")
       .then((r) => r.json())
-      .then((d: { groqAvailable?: boolean }) => setGroqAvailable(Boolean(d.groqAvailable)))
+      .then((d: { groqAvailable?: boolean; premiumAvailable?: boolean; llmAvailable?: boolean }) => {
+        setGroqAvailable(Boolean(d.groqAvailable));
+        setPremiumAvailable(Boolean(d.premiumAvailable ?? d.llmAvailable));
+      })
       .catch(() => setGroqAvailable(false));
   }, []);
 
   useEffect(() => {
     fetch("/api/admin/status", { credentials: "include" })
-      .then((r) => r.json())
-      .then((d: { ready?: boolean }) => setAdminReady(Boolean(d.ready)))
-      .catch(() => setAdminReady(false));
+      .then(async (res) => {
+        if (res.status === 401) {
+          setAuthFailed(true);
+          setAdminReady(false);
+          return;
+        }
+        const data = (await res.json()) as AdminEnvStatus;
+        setAdminStatus(data);
+        setAdminReady(Boolean(data.ready));
+      })
+      .catch(() => {
+        setAdminReady(false);
+      })
+      .finally(() => setStatusChecked(true));
   }, []);
 
   useEffect(() => {
-    if (adminReady) load();
-    else if (!configured) setLoading(false);
-  }, [adminReady, configured, load]);
+    if (!adminReady) return;
+    const timer = window.setTimeout(() => {
+      void load();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [adminReady, filter, load]);
 
   function getDraft(row: SubmissionRow) {
     return (
@@ -198,16 +219,20 @@ export function AdminReviewPanel() {
           <span>{a.warning}</span>
         </div>
 
-        {!adminReady && (
-          <p className="mt-4 text-sm text-zinc-400">
-            Live submission review requires Supabase service role. Demo queues below stay available
-            without backend configuration.
-          </p>
-        )}
+        <AdminEnvNotice
+          status={adminStatus}
+          statusChecked={statusChecked}
+          authFailed={authFailed}
+        />
 
         <AdminMockDashboard liveAvailable={adminReady} />
 
-        <AdminTournamentSettings groqAvailable={groqAvailable} />
+        <AdminMarketplaceCandidatesPanel liveAvailable={adminReady} />
+
+        <AdminTournamentSettings
+          groqAvailable={groqAvailable}
+          premiumAvailable={premiumAvailable}
+        />
 
         <AdminRoutingPanel />
 

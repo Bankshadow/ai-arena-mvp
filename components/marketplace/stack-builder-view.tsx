@@ -4,8 +4,7 @@ import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
 import { Download, Layers, Trash2, AlertTriangle } from "lucide-react";
 
-import { AddToStackButton } from "@/components/marketplace/add-to-stack-button";
-import { ComponentTypeBadge } from "@/components/marketplace/component-type-badge";
+import { ComponentProofCard } from "@/components/marketplace/component-proof-card";
 import {
   getComponentById,
   getMockComponentCatalog,
@@ -15,6 +14,8 @@ import {
   useWorkflowStack,
 } from "@/components/marketplace/stack-provider";
 import { Nav } from "@/components/Nav";
+import { useTranslations } from "@/components/i18n/locale-provider";
+import { fillTemplate } from "@/lib/i18n/helpers";
 import {
   downloadFilename,
   exportStack,
@@ -23,14 +24,18 @@ import { applyStackEstimates } from "@/lib/marketplace/stack-estimator";
 import { validateStack } from "@/lib/marketplace/stack-validator";
 import type { StackExportFormat } from "@/lib/marketplace/types";
 
-const EXPORT_FORMATS: { id: StackExportFormat; label: string }[] = [
-  { id: "json", label: "JSON config" },
-  { id: "markdown", label: "Markdown spec" },
-  { id: "cursor", label: "Cursor prompt" },
-  { id: "claude-code", label: "Claude Code setup" },
+const EXPORT_FORMAT_IDS: StackExportFormat[] = [
+  "json",
+  "markdown",
+  "cursor",
+  "claude-code",
+  "supabase-snippet",
+  "api-plan",
 ];
 
 export function StackBuilderView() {
+  const t = useTranslations();
+  const sb = t.marketplace.stackBuilder;
   const { stack, removeComponent, clearStack, refresh } = useWorkflowStack();
   const store = useStackStoreInstance();
   const [search, setSearch] = useState("");
@@ -80,25 +85,16 @@ export function StackBuilderView() {
       <Nav />
 
       <main className="relative mx-auto max-w-7xl px-4 pb-20 pt-10 sm:px-6">
-        <p className="font-mono text-xs uppercase tracking-[0.2em] text-cyan-400/80">
-          Stack Builder
-        </p>
+        <p className="font-mono text-xs uppercase tracking-[0.2em] text-cyan-400/80">{sb.eyebrow}</p>
         <h1 className="mt-2 flex items-center gap-3 text-3xl font-semibold">
           <Layers className="size-8 text-violet-400" />
-          Compose your workflow stack
+          {sb.title}
         </h1>
-        <p className="mt-2 max-w-2xl text-zinc-400">
-          Browse tournament-tested components, check compatibility, estimate cost and quality, then
-          export to JSON, Markdown, Cursor, or Claude Code — like{" "}
-          <a href="https://aitmpl.com/" target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:underline">
-            aitmpl.com Stack Builder
-          </a>
-          , with AI ARENA benchmark proof.
-        </p>
+        <p className="mt-2 max-w-2xl text-zinc-400">{sb.description}</p>
 
         {savedSlug && (
           <p className="mt-4 text-sm text-emerald-400">
-            Stack saved ·{" "}
+            {sb.saved}{" "}
             <Link href={`/stacks/${savedSlug}`} className="underline">
               View /stacks/{savedSlug}
             </Link>
@@ -108,37 +104,26 @@ export function StackBuilderView() {
         <div className="mt-8 grid gap-6 lg:grid-cols-12">
           {/* Browse */}
           <section className="glass-card rounded-2xl p-4 lg:col-span-4">
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
-              Browse
-            </h2>
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500">{sb.browse}</h2>
             <input
               type="search"
-              placeholder="Search…"
+              placeholder={sb.searchPlaceholder}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="mt-3 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm"
             />
-            <ul className="mt-3 max-h-[420px] space-y-2 overflow-y-auto">
-              {browseList.slice(0, 20).map((c) => (
-                <li
-                  key={c.id}
-                  className="flex items-center justify-between gap-2 rounded-lg border border-white/5 bg-black/20 px-3 py-2"
-                >
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-zinc-200">{c.title}</p>
-                    <ComponentTypeBadge type={c.type} small />
-                  </div>
-                  <AddToStackButton component={c} variant="icon" />
-                </li>
+            <div className="mt-3 max-h-[480px] space-y-3 overflow-y-auto">
+              {browseList.slice(0, 8).map((c) => (
+                <ComponentProofCard key={c.id} component={c} compact />
               ))}
-            </ul>
+            </div>
           </section>
 
           {/* Stack canvas */}
           <section className="glass-card rounded-2xl p-4 lg:col-span-5">
             <div className="flex items-center justify-between">
               <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
-                Your stack ({resolvedStack.components.length})
+                {fillTemplate(sb.yourStack, { count: String(resolvedStack.components.length) })}
               </h2>
               {resolvedStack.components.length > 0 && (
                 <button
@@ -146,7 +131,7 @@ export function StackBuilderView() {
                   onClick={clearStack}
                   className="inline-flex items-center gap-1 text-xs text-red-400 hover:text-red-300"
                 >
-                  <Trash2 className="size-3.5" /> Clear
+                  <Trash2 className="size-3.5" /> {sb.clear}
                 </button>
               )}
             </div>
@@ -159,9 +144,7 @@ export function StackBuilderView() {
               className="mt-3 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm font-medium"
             />
             {resolvedStack.components.length === 0 ? (
-              <p className="mt-8 text-center text-sm text-zinc-600">
-                Stack is empty — add components from the browse panel.
-              </p>
+              <p className="mt-8 text-center text-sm text-zinc-600">{sb.emptyStack}</p>
             ) : (
               <ol className="mt-4 space-y-2">
                 {resolvedStack.components.map((entry, idx) => {
@@ -183,7 +166,7 @@ export function StackBuilderView() {
                         type="button"
                         onClick={() => removeComponent(entry.component_id)}
                         className="text-zinc-600 hover:text-red-400"
-                        aria-label="Remove"
+                        aria-label={sb.remove}
                       >
                         <Trash2 className="size-4" />
                       </button>
@@ -197,17 +180,17 @@ export function StackBuilderView() {
           {/* Estimates + export */}
           <section className="glass-card rounded-2xl p-4 lg:col-span-3">
             <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
-              Estimates
+              {sb.estimates}
             </h2>
             <dl className="mt-4 space-y-3 text-sm">
               <div>
-                <dt className="text-zinc-600">Est. cost / run</dt>
+                <dt className="text-zinc-600">{sb.estCost}</dt>
                 <dd className="font-mono text-lg text-emerald-400">
                   ${resolvedStack.estimated_cost_usd.toFixed(4)}
                 </dd>
               </div>
               <div>
-                <dt className="text-zinc-600">Est. quality</dt>
+                <dt className="text-zinc-600">{sb.estQuality}</dt>
                 <dd className="font-mono text-lg text-cyan-300">
                   {resolvedStack.estimated_quality_score}/100
                 </dd>
@@ -217,7 +200,7 @@ export function StackBuilderView() {
             {resolvedStack.compatibility_warnings.length > 0 && (
               <div className="mt-4 space-y-2">
                 <p className="flex items-center gap-1 text-xs uppercase text-amber-400">
-                  <AlertTriangle className="size-3.5" /> Warnings
+                  <AlertTriangle className="size-3.5" /> {sb.warnings}
                 </p>
                 {resolvedStack.compatibility_warnings.map((w, i) => (
                   <p
@@ -243,7 +226,7 @@ export function StackBuilderView() {
                 disabled={resolvedStack.components.length === 0}
                 className="w-full rounded-xl border border-violet-500/40 bg-violet-500/15 py-2 text-sm text-violet-100 disabled:opacity-40"
               >
-                Save stack
+                {sb.saveStack}
               </button>
               <div className="relative">
                 <button
@@ -252,18 +235,18 @@ export function StackBuilderView() {
                   onClick={() => setExportOpen((o) => !o)}
                   className="flex w-full items-center justify-center gap-2 rounded-xl border border-cyan-500/40 bg-cyan-500/10 py-2 text-sm text-cyan-200 disabled:opacity-40"
                 >
-                  <Download className="size-4" /> Export
+                  <Download className="size-4" /> {sb.export}
                 </button>
                 {exportOpen && (
                   <div className="absolute left-0 right-0 top-full z-10 mt-1 rounded-xl border border-white/10 bg-[#0a0a0a] py-1 shadow-xl">
-                    {EXPORT_FORMATS.map((f) => (
+                    {EXPORT_FORMAT_IDS.map((id) => (
                       <button
-                        key={f.id}
+                        key={id}
                         type="button"
-                        onClick={() => handleExport(f.id)}
+                        onClick={() => handleExport(id)}
                         className="block w-full px-4 py-2 text-left text-sm text-zinc-300 hover:bg-white/5"
                       >
-                        {f.label}
+                        {sb.exportFormats[id]}
                       </button>
                     ))}
                   </div>

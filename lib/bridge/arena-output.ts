@@ -10,7 +10,9 @@ export type ArenaBridgePayload = {
   savedAt: string;
 };
 
-const STORAGE_KEY = "ai-arena-arena-bridge";
+export const ARENA_BRIDGE_STORAGE_KEY = "ai-arena-arena-bridge";
+
+const STORAGE_KEY = ARENA_BRIDGE_STORAGE_KEY;
 
 export function saveArenaBridge(payload: Omit<ArenaBridgePayload, "savedAt">): void {
   if (typeof window === "undefined") return;

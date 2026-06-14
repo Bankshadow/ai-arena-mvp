@@ -8,7 +8,8 @@ export type TaskType =
   | "preliminary_judge"
   | "final_judge"
   | "benchmark_report"
-  | "marketplace_polish";
+  | "marketplace_polish"
+  | "marketplace_summary";
 
 export type ProviderId = "mock" | "groq" | "anthropic" | "openai";
 
@@ -79,6 +80,7 @@ export type GuardAssessment = {
   apiCallCount: number;
   estimatedInputTokens: number;
   estimatedOutputTokens: number;
+  estimatedCostUsd: number;
   requestsPerMinute: number;
   requestsPerDay: number;
   tokensPerDay: number;
@@ -118,7 +120,7 @@ export type TournamentRoutingMeta = {
 export const RUNTIME_MODE_LABELS: Record<TournamentRuntimeMode, string> = {
   mock: "Mock",
   groq_free: "Groq Free",
-  hybrid_quality: "Hybrid Quality",
+  hybrid_quality: "Hybrid Quality (Groq + Claude/GPT judge)",
 };
 
-export const DEFAULT_RUNTIME_MODE: TournamentRuntimeMode = "groq_free";
+export const DEFAULT_RUNTIME_MODE: TournamentRuntimeMode = "mock";

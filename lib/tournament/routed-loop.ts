@@ -2,22 +2,29 @@ import { CREATOR_AGENTS, getCompetitor } from "@/lib/tournament/agents";
 import {
   calculateLeaderboard,
   createMarketplaceCandidates,
-  evaluateAgentRunsMock,
   generateChallengeIdeasMock,
   newId,
   runCompetitorAgentsMock,
   selectBestChallengeMock,
 } from "@/lib/tournament/engine-mock";
-import { getProviderAdapter } from "@/lib/tournament/providers";
-import { recordProviderUsage } from "@/lib/tournament/providers/usage-tracker";
+import { buildAgentConstitutionUsage } from "@/lib/constitution/tournament-bridge";
+import { selectBestChallengeIdea } from "@/lib/tournament/llm";
+import {
+  evaluateAgentRunsHybrid,
+  finalJudgeLabel,
+} from "@/lib/tournament/judge/hybrid-evaluator";
 import { modelRouter } from "@/lib/tournament/router/model-router";
+import {
+  executeRoutedTask,
+  recordMarketplaceSummaryStep,
+} from "@/lib/tournament/router/execute-routed-task";
+import { ProviderUsageLogger } from "@/lib/tournament/usage/usage-logger";
 import type {
+  GuardAssessment,
   ProviderUsageEntry,
   RoutingTimelineEntry,
   TournamentRuntimeMode,
 } from "@/lib/tournament/routing/types";
-import { selectBestChallengeIdea } from "@/lib/tournament/llm";
-import { buildAgentConstitutionUsage } from "@/lib/constitution/tournament-bridge";
 import type {
   AgentRun,
   Challenge,
@@ -32,7 +39,7 @@ import type {
 import { ALL_COMPETITOR_IDS } from "@/lib/tournament/agents";
 
 function parseJson<T>(text: string): T {
-  const trimmed = text.trim().replace(/^```json\s*/i, "").replace(/```\s*$/, "");
+  const trimmed = text.trim().replace(/^```json\s*/i, "").replace(/```\s*$/i, "");
   return JSON.parse(trimmed) as T;
 }
 
@@ -54,56 +61,13 @@ function event(
   };
 }
 
-function pushTimeline(
-  timeline: RoutingTimelineEntry[],
-  step: string,
-  taskType: RoutingTimelineEntry["taskType"],
-  provider: RoutingTimelineEntry["provider"],
-  model: string,
-) {
-  timeline.push({
-    step,
-    taskType,
-    provider,
-    model,
-    timestamp: new Date().toISOString(),
-  });
-}
-
-async function routedGenerate(
-  taskType: RoutingTimelineEntry["taskType"],
-  runtimeMode: TournamentRuntimeMode,
-  system: string,
-  user: string,
-  usage: ProviderUsageEntry[],
-  timeline: RoutingTimelineEntry[],
-  step: string,
-  agentId?: string,
-  jsonMode = false,
-): Promise<string> {
-  const decision = modelRouter.route(taskType, runtimeMode, agentId);
-  pushTimeline(timeline, step, decision.taskType, decision.provider, decision.model);
-
-  const adapter = getProviderAdapter(decision.provider);
-  const result = await adapter.generateText({
-    taskType: decision.taskType,
-    system,
-    user,
-    model: decision.model,
-    maxTokens: decision.maxTokens,
-    temperature: decision.temperature,
-    jsonMode,
-  });
-
-  usage.push(recordProviderUsage(result, taskType));
-  return result.text;
-}
-
 async function generateChallengeIdeasRouted(
   round: number,
   runtimeMode: TournamentRuntimeMode,
   usage: ProviderUsageEntry[],
   timeline: RoutingTimelineEntry[],
+  logger: ProviderUsageLogger,
+  tournamentId: string,
 ): Promise<ChallengeIdea[]> {
   const decision = modelRouter.route("challenge_generation", runtimeMode);
   if (!decision.usesRealApi) {
@@ -111,46 +75,53 @@ async function generateChallengeIdeasRouted(
   }
 
   const creators = CREATOR_AGENTS.map((c) => `${c.id}: ${c.name} (${c.specialty})`).join("\n");
-  const text = await routedGenerate(
-    "challenge_generation",
-    runtimeMode,
-    "You design AI tournament challenges. Return ONLY valid JSON array.",
-    `Round ${round}. Creators:\n${creators}\n\nReturn JSON array with 3 objects:\n[{"creatorId":"strategy|technical|growth","title":"...","brief":"...","topic":"...","difficulty":"easy|medium|hard","noveltyScore":0-100,"feasibilityScore":0-100}]`,
-    usage,
-    timeline,
-    "Generate challenge ideas",
-    undefined,
-    true,
-  );
 
-  type RawIdea = {
-    creatorId: CreatorAgentId;
-    title: string;
-    brief: string;
-    topic: string;
-    difficulty: "easy" | "medium" | "hard";
-    noveltyScore: number;
-    feasibilityScore: number;
-  };
+  try {
+    const { text } = await executeRoutedTask({
+      taskType: "challenge_generation",
+      runtimeMode,
+      system: "You design AI tournament challenges. Return ONLY valid JSON array.",
+      user: `Round ${round}. Creators:\n${creators}\n\nReturn JSON array with 3 objects:\n[{"creatorId":"strategy|technical|growth","title":"...","brief":"...","topic":"...","difficulty":"easy|medium|hard","noveltyScore":0-100,"feasibilityScore":0-100}]`,
+      step: "Generate challenge ideas",
+      jsonMode: true,
+      usage,
+      timeline,
+      logger,
+      tournamentId,
+      round,
+    });
 
-  const parsed = parseJson<RawIdea[]>(text);
-  return parsed.map((item) => {
-    const creator = CREATOR_AGENTS.find((c) => c.id === item.creatorId) ?? CREATOR_AGENTS[0]!;
-    const novelty = Math.min(100, Math.max(0, Math.round(item.noveltyScore)));
-    const feasibility = Math.min(100, Math.max(0, Math.round(item.feasibilityScore)));
-    return {
-      id: newId(),
-      creatorId: creator.id as CreatorAgentId,
-      creatorName: creator.name,
-      title: item.title,
-      brief: item.brief,
-      topic: item.topic,
-      difficulty: item.difficulty,
-      noveltyScore: novelty,
-      feasibilityScore: feasibility,
-      selectionScore: Math.round(novelty * 0.45 + feasibility * 0.55),
+    type RawIdea = {
+      creatorId: CreatorAgentId;
+      title: string;
+      brief: string;
+      topic: string;
+      difficulty: "easy" | "medium" | "hard";
+      noveltyScore: number;
+      feasibilityScore: number;
     };
-  });
+
+    const parsed = parseJson<RawIdea[]>(text);
+    return parsed.map((item) => {
+      const creator = CREATOR_AGENTS.find((c) => c.id === item.creatorId) ?? CREATOR_AGENTS[0]!;
+      const novelty = Math.min(100, Math.max(0, Math.round(item.noveltyScore)));
+      const feasibility = Math.min(100, Math.max(0, Math.round(item.feasibilityScore)));
+      return {
+        id: newId(),
+        creatorId: creator.id as CreatorAgentId,
+        creatorName: creator.name,
+        title: item.title,
+        brief: item.brief,
+        topic: item.topic,
+        difficulty: item.difficulty,
+        noveltyScore: novelty,
+        feasibilityScore: feasibility,
+        selectionScore: Math.round(novelty * 0.45 + feasibility * 0.55),
+      };
+    });
+  } catch {
+    return generateChallengeIdeasMock(round);
+  }
 }
 
 async function buildChallengeDocumentRouted(
@@ -158,6 +129,9 @@ async function buildChallengeDocumentRouted(
   runtimeMode: TournamentRuntimeMode,
   usage: ProviderUsageEntry[],
   timeline: RoutingTimelineEntry[],
+  logger: ProviderUsageLogger,
+  tournamentId: string,
+  round: number,
 ): Promise<Challenge> {
   const passThreshold = idea.difficulty === "easy" ? 62 : idea.difficulty === "hard" ? 72 : 66;
   const decision = modelRouter.route("challenge_generation", runtimeMode);
@@ -166,31 +140,37 @@ async function buildChallengeDocumentRouted(
     return selectBestChallengeMock([idea]);
   }
 
-  const text = await routedGenerate(
-    "challenge_generation",
-    runtimeMode,
-    "You write fictional source documents for AI benchmarks. Return ONLY JSON.",
-    `Create source doc for:\nTitle: ${idea.title}\nBrief: ${idea.brief}\n\nReturn JSON: {"inputDoc":"600+ chars memo","outputFormat":"markdown sections"}`,
-    usage,
-    timeline,
-    "Build challenge document",
-    undefined,
-    true,
-  );
+  try {
+    const { text } = await executeRoutedTask({
+      taskType: "challenge_generation",
+      runtimeMode,
+      system: "You write fictional source documents for AI benchmarks. Return ONLY JSON.",
+      user: `Create source doc for:\nTitle: ${idea.title}\nBrief: ${idea.brief}\n\nReturn JSON: {"inputDoc":"600+ chars memo","outputFormat":"markdown sections"}`,
+      step: "Build challenge document",
+      jsonMode: true,
+      usage,
+      timeline,
+      logger,
+      tournamentId,
+      round,
+    });
 
-  const parsed = parseJson<{ inputDoc: string; outputFormat?: string }>(text);
+    const parsed = parseJson<{ inputDoc: string; outputFormat?: string }>(text);
 
-  return {
-    id: newId(),
-    title: idea.title,
-    brief: idea.brief,
-    inputDoc: parsed.inputDoc,
-    outputFormat: parsed.outputFormat ?? "## Executive Summary\n## Key Risks\n## Recommendations",
-    passThreshold,
-    costLimitUsd: 1.0,
-    selectedFrom: idea.creatorId,
-    createdAt: new Date().toISOString(),
-  };
+    return {
+      id: newId(),
+      title: idea.title,
+      brief: idea.brief,
+      inputDoc: parsed.inputDoc,
+      outputFormat: parsed.outputFormat ?? "## Executive Summary\n## Key Risks\n## Recommendations",
+      passThreshold,
+      costLimitUsd: 1.0,
+      selectedFrom: idea.creatorId,
+      createdAt: new Date().toISOString(),
+    };
+  } catch {
+    return selectBestChallengeMock([idea]);
+  }
 }
 
 async function runCompetitorAgentRouted(
@@ -201,6 +181,8 @@ async function runCompetitorAgentRouted(
   usage: ProviderUsageEntry[],
   timeline: RoutingTimelineEntry[],
   agentModels: Record<string, string>,
+  logger: ProviderUsageLogger,
+  tournamentId: string,
 ): Promise<AgentRun> {
   const agent = getCompetitor(agentId);
   const decision = modelRouter.route("competitor_run", runtimeMode, agentId);
@@ -211,19 +193,20 @@ async function runCompetitorAgentRouted(
     return mockRuns.find((r) => r.agentId === agentId)!;
   }
 
-  const adapter = getProviderAdapter(decision.provider);
   const t0 = Date.now();
-  const result = await adapter.generateText({
+  const { result } = await executeRoutedTask({
     taskType: "competitor_run",
+    runtimeMode,
     system: `You are ${agent.name}. Minimize tokens while meeting all required sections.`,
     user: `Challenge: ${challenge.title}\n${challenge.brief}\n\nFormat:\n${challenge.outputFormat}\n\nSource:\n${challenge.inputDoc}`,
-    model: decision.model,
-    maxTokens: decision.maxTokens,
-    temperature: decision.temperature,
+    step: `Run ${agent.name}`,
+    agentId,
+    usage,
+    timeline,
+    logger,
+    tournamentId,
+    round,
   });
-
-  usage.push(recordProviderUsage(result, "competitor_run"));
-  pushTimeline(timeline, `Run ${agent.name}`, "competitor_run", decision.provider, decision.model);
 
   const constitution = buildAgentConstitutionUsage(agentId);
 
@@ -232,7 +215,7 @@ async function runCompetitorAgentRouted(
     agentId,
     agentName: agent.name,
     challengeId: challenge.id,
-    modelUsed: `${decision.provider}/${result.model}`,
+    modelUsed: `${result.provider}/${result.model}`,
     tokensIn: result.inputTokens,
     tokensOut: result.outputTokens,
     costUsd: result.estimatedCostUsd,
@@ -274,6 +257,7 @@ export async function runRoutedTournamentStep(
     step: RoutedLoopStep;
     runtimeMode: TournamentRuntimeMode;
     competitorCount: number;
+    guard?: GuardAssessment | null;
     existing: {
       challengeIdeas: ChallengeIdea[];
       selectedChallenge: Challenge | null;
@@ -285,19 +269,13 @@ export async function runRoutedTournamentStep(
     };
   },
 ): Promise<RoutedLoopOutput> {
-  const {
-    tournamentId,
-    round,
-    step,
-    runtimeMode,
-    competitorCount,
-    existing,
-  } = params;
+  const { tournamentId, round, step, runtimeMode, competitorCount, guard, existing } = params;
 
   const history = [...existing.history];
   const providerUsage: ProviderUsageEntry[] = [];
   const routingTimeline: RoutingTimelineEntry[] = [];
   const agentModels: Record<string, string> = {};
+  const logger = new ProviderUsageLogger({ tournamentId, round, runtimeMode });
 
   let challengeIdeas = existing.challengeIdeas;
   let selectedChallenge = existing.selectedChallenge;
@@ -314,12 +292,27 @@ export async function runRoutedTournamentStep(
   );
 
   if (step === "full" || step === "generate") {
-    challengeIdeas = await generateChallengeIdeasRouted(round, runtimeMode, providerUsage, routingTimeline);
+    challengeIdeas = await generateChallengeIdeasRouted(
+      round,
+      runtimeMode,
+      providerUsage,
+      routingTimeline,
+      logger,
+      tournamentId,
+    );
     history.unshift(
       event(tournamentId, round, "challenges_generated", `${challengeIdeas.length} challenge ideas`),
     );
     const best = selectBestChallengeIdea(challengeIdeas);
-    selectedChallenge = await buildChallengeDocumentRouted(best, runtimeMode, providerUsage, routingTimeline);
+    selectedChallenge = await buildChallengeDocumentRouted(
+      best,
+      runtimeMode,
+      providerUsage,
+      routingTimeline,
+      logger,
+      tournamentId,
+      round,
+    );
     history.unshift(
       event(tournamentId, round, "challenge_selected", `Selected "${selectedChallenge.title}"`),
     );
@@ -338,6 +331,8 @@ export async function runRoutedTournamentStep(
           providerUsage,
           routingTimeline,
           agentModels,
+          logger,
+          tournamentId,
         ),
       ),
     );
@@ -349,19 +344,27 @@ export async function runRoutedTournamentStep(
   if ((step === "full" || step === "evaluate") && selectedChallenge && activeRuns.length > 0) {
     const prelimDecision = modelRouter.route("preliminary_judge", runtimeMode);
     if (prelimDecision.usesRealApi) {
-      pushTimeline(
-        routingTimeline,
-        "Preliminary judge",
-        "preliminary_judge",
-        prelimDecision.provider,
-        prelimDecision.model,
-      );
+      routingTimeline.push({
+        step: "Preliminary judge",
+        taskType: "preliminary_judge",
+        provider: prelimDecision.provider,
+        model: prelimDecision.model,
+        timestamp: new Date().toISOString(),
+      });
     }
 
-    evaluations = evaluateAgentRunsMock(activeRuns, selectedChallenge, round);
+    evaluations = await evaluateAgentRunsHybrid(activeRuns, selectedChallenge, round, {
+      tournamentId,
+      round,
+      runtimeMode,
+      usage: providerUsage,
+      timeline: routingTimeline,
+      logger,
+      guard: guard ?? null,
+    });
     history.unshift(
       event(tournamentId, round, "evaluation_complete", `Scored ${evaluations.length} outputs`, {
-        judge: runtimeMode === "hybrid_quality" ? "groq-prelim+mock-final" : "groq+mock",
+        judge: finalJudgeLabel(runtimeMode, guard ?? null),
       }),
     );
 
@@ -371,12 +374,16 @@ export async function runRoutedTournamentStep(
     const seeds = createMarketplaceCandidates(tournamentId, round, selectedChallenge, evaluations);
     marketplace = [...seeds, ...marketplace].slice(0, 20);
     history.unshift(event(tournamentId, round, "marketplace_seeded", `${seeds.length} marketplace seeds`));
+
+    recordMarketplaceSummaryStep(runtimeMode, routingTimeline, round, seeds.length);
     history.unshift(
       event(tournamentId, round, "loop_complete", `Round ${round} complete`, {
         winner: [...evaluations].sort((a, b) => b.totalScore - a.totalScore)[0]?.agentName,
       }),
     );
   }
+
+  await logger.logBatch(providerUsage);
 
   const totalIn = providerUsage.reduce((s, u) => s + u.inputTokens, 0);
   const totalOut = providerUsage.reduce((s, u) => s + u.outputTokens, 0);

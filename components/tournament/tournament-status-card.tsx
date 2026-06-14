@@ -1,13 +1,20 @@
+"use client";
+
 import type { ReactNode } from "react";
 
+import { useTranslations } from "@/components/i18n/locale-provider";
+import {
+  fillTemplate,
+  translateRuntimeMode,
+  translateTournamentPhase,
+  translateViewModeCta,
+  translateViewModeRunsStat,
+  translateViewModeStatus,
+} from "@/lib/i18n/helpers";
 import type { Tournament } from "@/lib/tournament/types";
 import type { TournamentMode } from "@/lib/tournament/engine";
 import { getLoopIntervalMs } from "@/lib/tournament/engine";
-import {
-  DEFAULT_RUNTIME_MODE,
-  RUNTIME_MODE_LABELS,
-  type TournamentRuntimeMode,
-} from "@/lib/tournament/routing/types";
+import { DEFAULT_RUNTIME_MODE, type TournamentRuntimeMode } from "@/lib/tournament/routing/types";
 import {
   DEMO_COST_SAVED_USD,
   DEMO_MARKETPLACE_COUNT,
@@ -16,24 +23,7 @@ import {
   DEMO_WINNER_AGENT,
   DEMO_WINNER_SCORE,
 } from "@/lib/tournament/mission-control-demo";
-import {
-  isCompletedViewMode,
-  VIEW_MODE_CTA,
-  VIEW_MODE_RUNS_STAT,
-  VIEW_MODE_STATUS_LABEL,
-  type TournamentViewMode,
-} from "@/lib/tournament/view-mode-labels";
-
-const PHASE_LABELS: Record<Tournament["phase"], string> = {
-  idle: "Standby",
-  generating: "Generating challenges",
-  selecting: "Selecting challenge",
-  running: "Agents running",
-  judging: "Judges evaluating",
-  scoring: "Calculating scores",
-  marketplace: "Seeding marketplace",
-  complete: "Round complete",
-};
+import { isCompletedViewMode, type TournamentViewMode } from "@/lib/tournament/view-mode-labels";
 
 type Props = {
   tournament: Tournament;
@@ -72,7 +62,10 @@ export function TournamentStatusCard({
   onSwitchLive,
   busy,
 }: Props) {
-  const phaseLabel = PHASE_LABELS[tournament.phase];
+  const t = useTranslations();
+  const ts = t.tournament.status;
+  const tc = t.tournament.common;
+  const phaseLabel = translateTournamentPhase(tournament.phase, t);
   const intervalMin = getLoopIntervalMs() / 60000;
   const winner =
     [...tournament.evaluations].sort((a, b) => b.totalScore - a.totalScore)[0]?.agentName ??
@@ -80,8 +73,14 @@ export function TournamentStatusCard({
   const winnerScore =
     [...tournament.evaluations].sort((a, b) => b.totalScore - a.totalScore)[0]?.totalScore ??
     DEMO_WINNER_SCORE;
-  const cta = VIEW_MODE_CTA[viewMode];
+  const cta = translateViewModeCta(viewMode, t);
   const showDemoStats = isCompletedViewMode(viewMode);
+
+  const supabaseBadge = !supabaseConfigured
+    ? ts.badges.supabaseOff
+    : supabaseTableReady
+      ? ts.badges.supabaseReady
+      : ts.badges.supabaseTableMissing;
 
   return (
     <section className="glass-card overflow-hidden rounded-2xl border border-violet-500/20">
@@ -89,53 +88,58 @@ export function TournamentStatusCard({
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="font-mono text-xs uppercase tracking-[0.2em] text-violet-400/80">
-              Tournament Engine · {DEMO_ROUND_ID}
+              {fillTemplate(ts.engineLabel, { roundId: DEMO_ROUND_ID })}
             </p>
             <h2 className="mt-1 text-xl font-semibold text-white">
-              Round {tournament.round || 12} · {phaseLabel}
+              {fillTemplate(ts.roundPhase, {
+                round: String(tournament.round || 12),
+                phase: phaseLabel,
+              })}
             </h2>
             <p className="mt-1 text-sm text-cyan-300/90">
-              Current view: {VIEW_MODE_STATUS_LABEL[viewMode]}
+              {fillTemplate(ts.currentView, {
+                view: translateViewModeStatus(viewMode, t),
+              })}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Badge
-              label={tournament.paused ? "Paused" : "Auto loop active"}
+              label={tournament.paused ? ts.badges.paused : ts.badges.autoLoop}
               tone={tournament.paused ? "amber" : "emerald"}
             />
-            <Badge label={RUNTIME_MODE_LABELS[runtimeMode]} tone="cyan" />
-            <Badge label={engineMode === "live" ? "API active" : "Offline"} tone="neutral" />
+            <Badge label={translateRuntimeMode(runtimeMode, t)} tone="cyan" />
             <Badge
-              label={`Supabase ${!supabaseConfigured ? "off" : supabaseTableReady ? "ready" : "table missing"}`}
-              tone={supabaseConfigured && supabaseTableReady ? "emerald" : "neutral"}
+              label={engineMode === "live" ? ts.badges.apiActive : ts.badges.offline}
+              tone="neutral"
             />
+            <Badge label={supabaseBadge} tone={supabaseConfigured && supabaseTableReady ? "emerald" : "neutral"} />
           </div>
         </div>
       </div>
 
       <div className="grid gap-4 border-b border-white/10 p-5 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
-        <Stat label="Loop interval" value={`${intervalMin} min`} />
+        <Stat label={ts.stats.loopInterval} value={`${intervalMin} ${tc.min}`} />
         <Stat
-          label="Next run"
+          label={ts.stats.nextRun}
           value={
             viewMode === "live" && !tournament.paused && countdownSec !== null
               ? `${Math.floor(countdownSec / 60)}:${String(countdownSec % 60).padStart(2, "0")}`
-              : "Manual"
+              : ts.stats.manual
           }
           highlight={viewMode === "live" && !tournament.paused && countdownSec !== null && countdownSec < 60}
         />
-        <Stat label="Last completed" value={formatTime(tournament.completedAt)} />
-        <Stat label={VIEW_MODE_RUNS_STAT[viewMode]} value={String(tournament.activeRuns.length)} />
-        <Stat label="Winner" value={winner} />
-        <Stat label="Final score" value={`${winnerScore.toFixed(0)}`} highlight />
+        <Stat label={ts.stats.lastCompleted} value={formatTime(tournament.completedAt)} />
+        <Stat label={translateViewModeRunsStat(viewMode, t)} value={String(tournament.activeRuns.length)} />
+        <Stat label={ts.stats.winner} value={winner} />
+        <Stat label={ts.stats.finalScore} value={`${winnerScore.toFixed(0)}`} highlight />
       </div>
 
       {showDemoStats && (
         <div className="grid gap-3 border-b border-white/10 bg-black/20 p-5 sm:grid-cols-2 lg:grid-cols-4">
-          <DemoStat label="Selected challenge" value="Executive Summary Battle" />
-          <DemoStat label="Cost saved vs all-Claude" value={`$${DEMO_COST_SAVED_USD.toFixed(2)}`} />
-          <DemoStat label="Marketplace candidates" value={String(marketplaceCount)} />
-          <DemoStat label="Memory lessons" value={String(memoryLessons)} />
+          <DemoStat label={ts.stats.selectedChallenge} value="Executive Summary Battle" />
+          <DemoStat label={ts.stats.costSaved} value={`$${DEMO_COST_SAVED_USD.toFixed(2)}`} />
+          <DemoStat label={ts.stats.marketplaceCandidates} value={String(marketplaceCount)} />
+          <DemoStat label={ts.stats.memoryLessons} value={String(memoryLessons)} />
         </div>
       )}
 

@@ -5,7 +5,9 @@ import { useEffect, useState } from "react";
 import { History, Play, Radio } from "lucide-react";
 
 import { Nav } from "@/components/Nav";
+import { EnvStatusBanner } from "@/components/env/env-status-banner";
 import { ScoreHelp } from "@/components/scoring/score-help";
+import { fetchJson } from "@/lib/client/fetch-json";
 import { getCompetitor } from "@/lib/tournament/agents";
 import {
   listLocalTournamentRounds,
@@ -22,34 +24,45 @@ export function TournamentsListView() {
     mergeWithMockTournamentRounds([]),
   );
   const [source, setSource] = useState<"demo" | "supabase" | "local" | "mixed">("demo");
+  const [fetchNotice, setFetchNotice] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
-      try {
-        const res = await fetch("/api/tournament/rounds");
-        const data = await res.json();
-        const remote = data.rounds ?? [];
-        const merged = mergeWithMockTournamentRounds(
-          mergeTournamentLists(remote, listLocalTournamentRounds()),
-        );
-        setRounds(merged);
-        const hasLive = remote.length > 0 || listLocalTournamentRounds().length > 0;
-        setSource(
-          hasLive && remote.length > 0
-            ? listLocalTournamentRounds().length > 0
-              ? "mixed"
-              : "supabase"
-            : hasLive
-              ? "local"
-              : "demo",
-        );
-      } catch {
+      setFetchNotice(null);
+      const { ok, data, timedOut } = await fetchJson<{ rounds?: TournamentHistoryRow[] }>(
+        "/api/tournament/rounds",
+      );
+
+      if (!ok || !data) {
         setRounds(
           mergeWithMockTournamentRounds(
             mergeTournamentLists([], listLocalTournamentRounds()),
           ),
         );
+        setSource(listLocalTournamentRounds().length > 0 ? "local" : "demo");
+        if (timedOut) {
+          setFetchNotice("Tournament history timed out — showing demo and local saves.");
+        } else if (!ok) {
+          setFetchNotice("Could not reach tournament API — showing demo and local saves.");
+        }
+        return;
       }
+
+      const remote = data.rounds ?? [];
+      const merged = mergeWithMockTournamentRounds(
+        mergeTournamentLists(remote, listLocalTournamentRounds()),
+      );
+      setRounds(merged);
+      const hasLive = remote.length > 0 || listLocalTournamentRounds().length > 0;
+      setSource(
+        hasLive && remote.length > 0
+          ? listLocalTournamentRounds().length > 0
+            ? "mixed"
+            : "supabase"
+          : hasLive
+            ? "local"
+            : "demo",
+      );
     }
     load();
   }, []);
@@ -77,6 +90,10 @@ export function TournamentsListView() {
           <ScoreHelp system="agent_simulation" />
           <ScoreHelp system="marketplace" />
         </div>
+
+        {fetchNotice && (
+          <EnvStatusBanner className="mt-4" title={fetchNotice} variant="warning" />
+        )}
 
         <div className="mt-6 flex flex-wrap gap-3">
           <Link

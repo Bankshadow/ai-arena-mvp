@@ -1,7 +1,8 @@
 "use client";
 
+import { useTranslations } from "@/components/i18n/locale-provider";
+import { translateGuardAction, translateRiskLevel } from "@/lib/i18n/helpers";
 import type {
-  GuardAssessment,
   ProviderUsageEntry,
   RoutingTimelineEntry,
   TournamentRoutingMeta,
@@ -18,6 +19,9 @@ const RISK_STYLES = {
 };
 
 export function RoutingDashboard({ routing }: Props) {
+  const t = useTranslations();
+  const d = t.tournament.routing.dashboard;
+  const tc = t.tournament.common;
   const guard = routing?.guard;
   const usage = routing?.providerUsage ?? [];
   const timeline = routing?.routingTimeline ?? [];
@@ -27,38 +31,44 @@ export function RoutingDashboard({ routing }: Props) {
     <div className="grid gap-6 xl:grid-cols-2">
       <section className="glass-card rounded-2xl p-5">
         <h3 className="text-sm font-semibold uppercase tracking-wider text-zinc-400">
-          Rate limit & savings
+          {d.rateLimitTitle}
         </h3>
         {guard ? (
           <div className="mt-4 space-y-3">
             <div
               className={`inline-flex rounded-lg border px-3 py-1 text-xs font-medium uppercase ${RISK_STYLES[guard.riskLevel]}`}
             >
-              Risk: {guard.riskLevel}
+              {d.risk}: {translateRiskLevel(guard.riskLevel, t)}
             </div>
             <p className="text-sm text-zinc-400">{guard.message}</p>
             <dl className="grid grid-cols-2 gap-2 text-xs text-zinc-500">
-              <Stat label="Est. API calls" value={String(guard.apiCallCount)} />
-              <Stat label="Est. tokens" value={`${(guard.estimatedInputTokens + guard.estimatedOutputTokens).toLocaleString()}`} />
-              <Stat label="Action" value={guard.recommendedAction.replace(/_/g, " ")} />
-              <Stat label="Can run" value={guard.canRun ? "Yes" : "No"} />
+              <Stat label={d.estApiCalls} value={String(guard.apiCallCount)} />
+              <Stat
+                label={d.estTokens}
+                value={`${(guard.estimatedInputTokens + guard.estimatedOutputTokens).toLocaleString()}`}
+              />
+              <Stat
+                label={d.action}
+                value={translateGuardAction(guard.recommendedAction, t)}
+              />
+              <Stat label={d.canRun} value={guard.canRun ? tc.yes : tc.no} />
             </dl>
           </div>
         ) : (
-          <p className="mt-4 text-sm text-zinc-600">Run a loop to assess rate limits.</p>
+          <p className="mt-4 text-sm text-zinc-600">{d.runToAssess}</p>
         )}
         <div className="mt-4 rounded-lg border border-cyan-500/30 bg-cyan-500/5 px-4 py-3">
-          <p className="text-xs text-zinc-500">Est. cost saved vs all-Claude</p>
+          <p className="text-xs text-zinc-500">{d.costSaved}</p>
           <p className="font-mono text-lg text-cyan-300">${saved.toFixed(4)}</p>
         </div>
       </section>
 
       <section className="glass-card rounded-2xl p-5">
         <h3 className="text-sm font-semibold uppercase tracking-wider text-zinc-400">
-          Model routing timeline
+          {d.timelineTitle}
         </h3>
         {timeline.length === 0 ? (
-          <p className="mt-4 text-sm text-zinc-600">No routed steps yet.</p>
+          <p className="mt-4 text-sm text-zinc-600">{d.noTimeline}</p>
         ) : (
           <ol className="mt-4 max-h-48 space-y-2 overflow-y-auto text-xs">
             {timeline.map((entry, i) => (
@@ -70,23 +80,23 @@ export function RoutingDashboard({ routing }: Props) {
 
       <section className="glass-card rounded-2xl p-5 xl:col-span-2">
         <h3 className="text-sm font-semibold uppercase tracking-wider text-zinc-400">
-          Provider usage log
+          {d.usageTitle}
         </h3>
         {usage.length === 0 ? (
-          <p className="mt-4 text-sm text-zinc-600">No provider calls logged.</p>
+          <p className="mt-4 text-sm text-zinc-600">{d.noUsage}</p>
         ) : (
           <div className="mt-4 overflow-x-auto">
             <table className="w-full min-w-[520px] text-xs">
               <thead className="text-left text-zinc-500">
                 <tr>
-                  <th className="pb-2">Time</th>
-                  <th className="pb-2">Task</th>
-                  <th className="pb-2">Provider</th>
-                  <th className="pb-2">Model</th>
-                  <th className="pb-2 text-right">Tokens</th>
-                  <th className="pb-2 text-right">Cost</th>
-                  <th className="pb-2 text-right">Latency</th>
-                  <th className="pb-2">Status</th>
+                  <th className="pb-2">{d.table.time}</th>
+                  <th className="pb-2">{d.table.task}</th>
+                  <th className="pb-2">{d.table.provider}</th>
+                  <th className="pb-2">{d.table.model}</th>
+                  <th className="pb-2 text-right">{d.table.tokens}</th>
+                  <th className="pb-2 text-right">{d.table.cost}</th>
+                  <th className="pb-2 text-right">{d.table.latency}</th>
+                  <th className="pb-2">{d.table.status}</th>
                 </tr>
               </thead>
               <tbody>

@@ -15,6 +15,9 @@ export async function GET() {
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    return NextResponse.json({ error: message, battles: [] }, { status: 500 });
+    return NextResponse.json(
+      { error: message, battles: [], source: "demo" as const },
+      { status: 200 },
+    );
   }
 }

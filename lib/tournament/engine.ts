@@ -103,7 +103,7 @@ function runTournamentLoopSync(state: TournamentState, step: LoopStep): Tourname
   });
 }
 
-/** Server-side loop — multi-provider routing (default: mock). */
+/** Server-side loop — multi-provider routing (default: mock). See docs/MOCK-VS-LIVE.md. */
 export async function runTournamentLoopAsync(
   state: TournamentState,
   step: LoopStep = "full",

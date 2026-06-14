@@ -76,6 +76,39 @@ export type MarketplaceListingRow = {
   created_at: string;
 };
 
+export type MarketplaceCandidateRow = {
+  id: string;
+  dedup_key: string;
+  component_type: string;
+  challenge_category: string;
+  winning_agent: string;
+  strategy_hash: string;
+  title: string;
+  description: string;
+  tournament_id: string;
+  source_round: number;
+  agent_id: string | null;
+  agent_name: string | null;
+  challenge_title: string | null;
+  total_score: number;
+  marketplace_score: number;
+  status: import("@/lib/marketplace/types").CandidateStatus;
+  tested_runs: number;
+  avg_score: number;
+  avg_cost: number;
+  avg_tokens: number;
+  avg_latency: number;
+  evidence: unknown;
+  judge_notes: unknown;
+  proof: unknown;
+  arena_score: unknown;
+  component_id: string | null;
+  payload: Record<string, unknown>;
+  last_seen_at: string;
+  created_at: string;
+  updated_at: string;
+};
+
 export type AgentConstitutionRow = {
   id: string;
   agent_id: string;

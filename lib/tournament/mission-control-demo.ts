@@ -204,6 +204,7 @@ function buildDemoRouting(completedAt: string): TournamentRoutingMeta {
     apiCallCount: 14,
     estimatedInputTokens: 42_800,
     estimatedOutputTokens: 11_200,
+    estimatedCostUsd: 0.0042,
     requestsPerMinute: 3,
     requestsPerDay: 14,
     tokensPerDay: 54_000,

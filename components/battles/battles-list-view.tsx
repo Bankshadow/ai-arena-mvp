@@ -5,7 +5,9 @@ import { useEffect, useState } from "react";
 import { History, Play, Swords } from "lucide-react";
 
 import { Nav } from "@/components/Nav";
+import { EnvStatusBanner } from "@/components/env/env-status-banner";
 import { ScoreHelp } from "@/components/scoring/score-help";
+import { fetchJson } from "@/lib/client/fetch-json";
 import { getAgentById } from "@/lib/agents/personas";
 import type { AgentPersonaId } from "@/lib/agents/types";
 import { mergeWithMockBattles, type BattleHistoryRow } from "@/lib/battle/mock-history";
@@ -14,28 +16,39 @@ import { listLocalBattles, mergeBattleLists } from "@/lib/battle/local-storage";
 export function BattlesListView() {
   const [battles, setBattles] = useState<BattleHistoryRow[]>(() => mergeWithMockBattles([]));
   const [source, setSource] = useState<"demo" | "supabase" | "local" | "mixed">("demo");
+  const [fetchNotice, setFetchNotice] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
-      try {
-        const res = await fetch("/api/battles");
-        const data = await res.json();
-        const remote = data.battles ?? [];
-        const merged = mergeWithMockBattles(mergeBattleLists(remote, listLocalBattles()));
-        setBattles(merged);
-        const hasLive = remote.length > 0 || listLocalBattles().length > 0;
-        setSource(
-          hasLive && remote.length > 0
-            ? listLocalBattles().length > 0
-              ? "mixed"
-              : "supabase"
-            : hasLive
-              ? "local"
-              : "demo",
-        );
-      } catch {
+      setFetchNotice(null);
+      const { ok, data, timedOut } = await fetchJson<{ battles?: BattleHistoryRow[] }>(
+        "/api/battles",
+      );
+
+      if (!ok || !data) {
         setBattles(mergeWithMockBattles(mergeBattleLists([], listLocalBattles())));
+        setSource(listLocalBattles().length > 0 ? "local" : "demo");
+        if (timedOut) {
+          setFetchNotice("Battle history timed out — showing demo and local saves.");
+        } else if (!ok) {
+          setFetchNotice("Could not reach battle API — showing demo and local saves.");
+        }
+        return;
       }
+
+      const remote = data.battles ?? [];
+      const merged = mergeWithMockBattles(mergeBattleLists(remote, listLocalBattles()));
+      setBattles(merged);
+      const hasLive = remote.length > 0 || listLocalBattles().length > 0;
+      setSource(
+        hasLive && remote.length > 0
+          ? listLocalBattles().length > 0
+            ? "mixed"
+            : "supabase"
+          : hasLive
+            ? "local"
+            : "demo",
+      );
     }
     load();
   }, []);
@@ -62,6 +75,10 @@ export function BattlesListView() {
         <div className="mt-4">
           <ScoreHelp system="agent_simulation" />
         </div>
+
+        {fetchNotice && (
+          <EnvStatusBanner className="mt-4" title={fetchNotice} variant="warning" />
+        )}
 
         <div className="mt-6 flex flex-wrap gap-3">
           <Link

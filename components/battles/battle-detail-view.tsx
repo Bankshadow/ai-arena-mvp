@@ -6,6 +6,7 @@ import { ArrowLeft, History } from "lucide-react";
 
 import { BattleResults } from "@/components/battles/battle-results";
 import { Nav } from "@/components/Nav";
+import { fetchJson } from "@/lib/client/fetch-json";
 import { getLocalBattle } from "@/lib/battle/local-storage";
 import { MOCK_BATTLE_HISTORY } from "@/lib/battle/mock-history";
 import type { SavedBattleRecord } from "@/lib/battle/saved-battle";
@@ -28,9 +29,8 @@ export function BattleDetailView({ battleId }: Props) {
       }
 
       try {
-        const res = await fetch(`/api/battles/${battleId}`);
-        if (res.ok) {
-          const data = (await res.json()) as SavedBattleRecord;
+        const { ok, data } = await fetchJson<SavedBattleRecord>(`/api/battles/${battleId}`);
+        if (ok && data) {
           setBattle(data);
           return;
         }

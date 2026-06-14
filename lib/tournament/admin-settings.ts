@@ -41,12 +41,20 @@ export function writeTournamentAdminSettings(
   return next;
 }
 
-/** Resolve runtime mode for tournament loop (client-side). */
+/** Resolve runtime mode for tournament loop (client-side preview). */
 export function resolveTournamentRuntimeMode(
   mode: TournamentRuntimeMode | undefined,
   groqAvailable: boolean,
+  premiumAvailable = false,
 ): TournamentRuntimeMode {
   const chosen = mode ?? readTournamentAdminSettings().defaultRuntimeMode;
-  if (chosen !== "mock" && !groqAvailable) return "mock";
-  return chosen;
+  if (chosen === "mock") return "mock";
+  if (chosen === "groq_free") {
+    return groqAvailable ? "groq_free" : "mock";
+  }
+  if (chosen === "hybrid_quality") {
+    if (groqAvailable || premiumAvailable) return "hybrid_quality";
+    return "mock";
+  }
+  return "mock";
 }

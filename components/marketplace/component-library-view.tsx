@@ -5,15 +5,19 @@ import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Layers } from "lucide-react";
 
-import { ComponentCard } from "@/components/marketplace/component-card";
+import { useTranslations } from "@/components/i18n/locale-provider";
+import { ComponentProofCard } from "@/components/marketplace/component-proof-card";
 import { ComponentFiltersBar } from "@/components/marketplace/component-filters-bar";
 import { MarketplaceSemanticSearch } from "@/components/vector/marketplace-semantic-search";
 import { useWorkflowStack } from "@/components/marketplace/stack-provider";
 import { Nav } from "@/components/Nav";
+import { fillTemplate } from "@/lib/i18n/helpers";
 import { filterComponents } from "@/lib/marketplace/mock-catalog";
 import type { ComponentFilters, ComponentSortKey, ComponentType } from "@/lib/marketplace/types";
 
 export function ComponentLibraryView() {
+  const t = useTranslations();
+  const lib = t.marketplace.library;
   const searchParams = useSearchParams();
   const { count } = useWorkflowStack();
 
@@ -41,17 +45,20 @@ export function ComponentLibraryView() {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="font-mono text-xs uppercase tracking-[0.2em] text-cyan-400/80">
-              Component library
+              {lib.eyebrow}
             </p>
-            <h1 className="mt-2 text-3xl font-semibold">Browse components</h1>
-            <p className="mt-2 text-zinc-500">{components.length} components match filters</p>
+            <h1 className="mt-2 text-3xl font-semibold">{lib.title}</h1>
+            <p className="mt-2 max-w-2xl text-zinc-500">{lib.description}</p>
+            <p className="mt-1 text-sm text-zinc-600">
+              {fillTemplate(lib.matchCount, { count: String(components.length) })}
+            </p>
           </div>
           <Link
             href="/stack-builder"
             className="inline-flex items-center gap-2 rounded-xl border border-violet-500/30 bg-violet-500/10 px-4 py-2 text-sm text-violet-200"
           >
             <Layers className="size-4" />
-            Stack ({count})
+            {fillTemplate(lib.stackLink, { count: String(count) })}
           </Link>
         </div>
 
@@ -70,12 +77,12 @@ export function ComponentLibraryView() {
 
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {components.map((c) => (
-            <ComponentCard key={c.id} component={c} />
+            <ComponentProofCard key={c.id} component={c} />
           ))}
         </div>
 
         {components.length === 0 && (
-          <p className="mt-12 text-center text-zinc-600">No components match these filters.</p>
+          <p className="mt-12 text-center text-zinc-600">{lib.empty}</p>
         )}
       </main>
     </div>

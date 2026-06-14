@@ -3,19 +3,23 @@ import { NextResponse } from "next/server";
 
 import { isPlaceholderEnvValue } from "@/lib/env";
 
-const ADMIN_PATHS = ["/admin"];
 const ADMIN_API_PREFIX = "/api/admin";
 
 export function isAdminRoute(pathname: string): boolean {
   return pathname.startsWith(ADMIN_API_PREFIX);
 }
 
-function adminCredentialsConfigured(): boolean {
+/** True when ADMIN_USERNAME and ADMIN_PASSWORD are set (server-only check). */
+export function isAdminCredentialsConfigured(): boolean {
   const user = process.env.ADMIN_USERNAME?.trim();
   const pass = process.env.ADMIN_PASSWORD?.trim();
   if (!user || !pass) return false;
   if (isPlaceholderEnvValue(user) || isPlaceholderEnvValue(pass)) return false;
   return true;
+}
+
+function adminCredentialsConfigured(): boolean {
+  return isAdminCredentialsConfigured();
 }
 
 function unauthorizedResponse(): NextResponse {

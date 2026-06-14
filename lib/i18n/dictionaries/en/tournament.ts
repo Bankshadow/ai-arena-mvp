@@ -1,0 +1,210 @@
+export const tournament = {
+  header: {
+    eyebrow: "Autonomous simulation",
+    title: "Tournament Engine",
+    description:
+      "AI agents generate challenges, compete, get judged, update the leaderboard, and seed the marketplace — {runtimeMode} loop every {interval} min. Completed rounds auto-save.",
+  },
+  sampleBanner: {
+    replayEyebrow: "Replay mode · T-R12",
+    sampleEyebrow: "Completed sample round · T-R12",
+    replayBody:
+      "Step through the last completed round. Switch to live mode to start a fresh tournament loop.",
+    sampleBody:
+      "Showing a completed demo round. Run tournament now for a live loop, or open full replay.",
+    fullReplay: "Full replay →",
+    switchLive: "Switch to live mode",
+  },
+  runtimeMode: {
+    mock: "Mock",
+    groq_free: "Groq Free",
+    hybrid_quality: "Hybrid Quality (Groq + Claude/GPT judge)",
+    hints: {
+      mock: "No external APIs — deterministic offline loop",
+      groq_free: "Groq for challenge + agents + prelim judge (requires GROQ_API_KEY)",
+      hybrid_quality:
+        "Groq or mock agents + premium final judge when Anthropic/OpenAI keys are set",
+    },
+    selectorTitle: "Runtime mode",
+    selectorHint: "Configure in Admin → Tournament engine settings. Default is mock.",
+    groqKeyRequired: "Set GROQ_API_KEY in .env.local",
+  },
+  routing: {
+    providerStatus: "Provider status",
+    providers: {
+      mock: {
+        label: "Mock Provider",
+        message: "Active — default demo runtime for mission control",
+      },
+      groq: {
+        label: "Groq",
+        message: "Configurable via Admin → Tournament engine settings",
+        messageAvailable: "Groq key detected — available for groq_free / hybrid",
+      },
+      claude: {
+        label: "Claude / GPT",
+        message: "Disabled for mock mode — optional in hybrid runtime",
+        messageAvailable: "Premium key detected — hybrid final judge available",
+      },
+      openrouter: {
+        label: "OpenRouter",
+        message: "Not configured",
+      },
+    },
+    providerStatusLabels: {
+      active: "Active",
+      configurable: "Configurable",
+      disabled: "Disabled",
+      not_configured: "Not configured",
+    },
+    stats: {
+      estApiCalls: "Est. API calls",
+      estTokens: "Est. tokens",
+      estCost: "Est. cost",
+      savingsVsClaude: "Savings vs all-Claude",
+      rateLimitRisk: "Rate limit risk",
+    },
+    dashboard: {
+      rateLimitTitle: "Rate limit & savings",
+      risk: "Risk",
+      estApiCalls: "Est. API calls",
+      estTokens: "Est. tokens",
+      action: "Action",
+      canRun: "Can run",
+      runToAssess: "Run a loop to assess rate limits.",
+      costSaved: "Est. cost saved vs all-Claude",
+      timelineTitle: "Model routing timeline",
+      noTimeline: "No routed steps yet.",
+      usageTitle: "Provider usage log",
+      noUsage: "No provider calls logged.",
+      table: {
+        time: "Time",
+        task: "Task",
+        provider: "Provider",
+        model: "Model",
+        tokens: "Tokens",
+        cost: "Cost",
+        latency: "Latency",
+        status: "Status",
+      },
+    },
+    guardActions: {
+      proceed: "proceed",
+      skip_final_judge: "skip final judge",
+      reduce_competitors: "reduce competitors",
+      defer: "defer",
+      use_mock: "use mock",
+    },
+    riskLevels: {
+      low: "low",
+      medium: "medium",
+      high: "high",
+    },
+  },
+  adminControls: {
+    title: "9 · Admin controls",
+    subtitle: "Manual overrides for the 5-minute autonomous loop",
+    runNow: "Run tournament now",
+    pause: "Pause loop",
+    resume: "Resume loop",
+    generateOnly: "Generate only",
+    runAgentsOnly: "Run agents only",
+    evaluateOnly: "Evaluate only",
+    saveAgain: "Save to Supabase again",
+  },
+  adminSettings: {
+    title: "Tournament engine settings",
+    description:
+      "Default runtime mode for the autonomous tournament loop. Saved locally and applied on the tournament page for all visitors using this browser.",
+    save: "Save tournament settings",
+    saved: "Saved",
+    groqFallback:
+      "GROQ_API_KEY is not set — tournament will fall back to mock until Groq is configured.",
+    hybridPremiumHint:
+      "Hybrid mode can still use a premium final judge when Anthropic/OpenAI keys are set.",
+  },
+  status: {
+    engineLabel: "Tournament Engine · {roundId}",
+    roundPhase: "Round {round} · {phase}",
+    currentView: "Current view: {view}",
+    badges: {
+      paused: "Paused",
+      autoLoop: "Auto loop active",
+      apiActive: "API active",
+      offline: "Offline",
+      supabaseOff: "Supabase off",
+      supabaseReady: "Supabase ready",
+      supabaseTableMissing: "Supabase table missing",
+    },
+    stats: {
+      loopInterval: "Loop interval",
+      nextRun: "Next run",
+      manual: "Manual",
+      lastCompleted: "Last completed",
+      winner: "Winner",
+      finalScore: "Final score",
+      selectedChallenge: "Selected challenge",
+      costSaved: "Cost saved vs all-Claude",
+      marketplaceCandidates: "Marketplace candidates",
+      memoryLessons: "Memory lessons",
+    },
+    phases: {
+      idle: "Standby",
+      generating: "Generating challenges",
+      selecting: "Selecting challenge",
+      running: "Agents running",
+      judging: "Judges evaluating",
+      scoring: "Calculating scores",
+      marketplace: "Seeding marketplace",
+      complete: "Round complete",
+    },
+    viewModes: {
+      live: "Live round",
+      replay: "Replay",
+      completed_sample: "Last completed round",
+      standby: "Standby",
+    },
+    runsStat: {
+      live: "Active runs",
+      replay: "Completed runs",
+      completed_sample: "Completed runs",
+      standby: "Completed runs",
+    },
+    cta: {
+      live: {
+        runNow: "Run next round",
+        replay: "Replay last round",
+        switchLive: "Pause live loop",
+      },
+      replay: {
+        runNow: "Run tournament now",
+        replay: "Refresh replay",
+        switchLive: "Exit replay",
+      },
+      completed_sample: {
+        runNow: "Run tournament now",
+        replay: "Replay last round",
+        switchLive: "Switch to live mode",
+      },
+      standby: {
+        runNow: "Run tournament now",
+        replay: "Load sample round",
+        switchLive: "Switch to live mode",
+      },
+    },
+  },
+  flowTimeline: {
+    title: "Tournament flow timeline",
+    subtitle: "End-to-end autonomous loop from challenge generation to marketplace seeding",
+    stepStatus: {
+      complete: "complete",
+      active: "active",
+      pending: "pending",
+    },
+  },
+  common: {
+    yes: "Yes",
+    no: "No",
+    min: "min",
+  },
+};
