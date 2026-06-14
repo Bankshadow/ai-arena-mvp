@@ -5,9 +5,8 @@ import { useEffect, useState } from "react";
 import { ArrowLeft, History } from "lucide-react";
 
 import { ActiveBattlePanel } from "@/components/tournament/active-battle-panel";
-import { ChallengeGeneratorPanel } from "@/components/tournament/challenge-generator-panel";
+import { ChallengeGeneratorSection } from "@/components/tournament/challenge-generator-section";
 import { LiveLeaderboard } from "@/components/tournament/live-leaderboard";
-import { SelectedChallengeCard } from "@/components/tournament/selected-challenge-card";
 import { Nav } from "@/components/Nav";
 import { getLocalTournamentRound } from "@/lib/tournament/local-storage";
 import {
@@ -110,13 +109,11 @@ export function TournamentDetailView({ roundId }: Props) {
               )}
             </header>
 
-            <div className="grid gap-6 lg:grid-cols-2">
-              <ChallengeGeneratorPanel
-                ideas={state.tournament.challengeIdeas}
-                selectedId={selectedIdeaId}
-              />
-              <SelectedChallengeCard challenge={state.tournament.selectedChallenge} />
-            </div>
+            <ChallengeGeneratorSection
+              ideas={state.tournament.challengeIdeas}
+              selectedChallenge={state.tournament.selectedChallenge}
+              roundSelectedIdeaId={selectedIdeaId}
+            />
 
             <ActiveBattlePanel
               runs={state.tournament.activeRuns}

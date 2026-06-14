@@ -7,18 +7,15 @@ import { Radio } from "lucide-react";
 import { AdminControls } from "@/components/tournament/admin-controls";
 import { ActiveBattlePanel } from "@/components/tournament/active-battle-panel";
 import { AgentPerformanceAnalytics } from "@/components/tournament/agent-performance-analytics";
-import { ChallengeGeneratorPanel } from "@/components/tournament/challenge-generator-panel";
+import { ChallengeGeneratorSection } from "@/components/tournament/challenge-generator-section";
 import { LiveLeaderboard } from "@/components/tournament/live-leaderboard";
 import { MarketplaceSeedPanel } from "@/components/tournament/marketplace-seed-panel";
-import { SelectedChallengeCard } from "@/components/tournament/selected-challenge-card";
 import { TournamentHistory } from "@/components/tournament/tournament-history";
-import { ProviderStatusCards } from "@/components/tournament/routing/provider-status-cards";
 import { ConstitutionTournamentPanel } from "@/components/tournament/constitution-tournament-panel";
 import { MemoryTournamentPanel } from "@/components/tournament/memory-tournament-panel";
 import { useMemory } from "@/components/memory/memory-provider";
 import type { MemoryKnowledgeBase } from "@/lib/memory/store";
 import { runMemoryCompilePipeline } from "@/lib/memory/pipeline";
-import { RoutingDashboard } from "@/components/tournament/routing/routing-dashboard";
 import { TournamentJoinEvents } from "@/components/tournament/tournament-join-events";
 import { TournamentStatusCard } from "@/components/tournament/tournament-status-card";
 import { Nav } from "@/components/Nav";
@@ -36,8 +33,6 @@ import {
   readTournamentAdminSettings,
   resolveTournamentRuntimeMode,
 } from "@/lib/tournament/admin-settings";
-import type { ProviderStatus } from "@/lib/tournament/routing/types";
-import type { GuardAssessment } from "@/lib/tournament/routing/types";
 import type { TournamentEvent, TournamentState } from "@/lib/tournament/types";
 import { upsertLocalTournamentRound } from "@/lib/tournament/local-storage";
 import {
@@ -53,13 +48,6 @@ type EngineStatus = {
   supabaseCanSave: boolean;
   supabaseError: string | null;
   supabaseHint: string | null;
-  providers?: ProviderStatus[];
-  groqRateLimit?: {
-    requestsToday: number;
-    tokensToday: number;
-    requestsPerDayLimit: number | null;
-  };
-  guardPreview?: GuardAssessment;
 };
 
 export function TournamentView() {
@@ -400,25 +388,16 @@ export function TournamentView() {
             }}
           />
 
-          <div className="grid gap-6 lg:grid-cols-2">
-            <ChallengeGeneratorPanel
-              ideas={state.tournament.challengeIdeas}
-              selectedId={selectedIdeaId}
-            />
-            <SelectedChallengeCard challenge={state.tournament.selectedChallenge} />
-          </div>
+          <ChallengeGeneratorSection
+            ideas={state.tournament.challengeIdeas}
+            selectedChallenge={state.tournament.selectedChallenge}
+            roundSelectedIdeaId={selectedIdeaId}
+          />
 
           <ActiveBattlePanel
             runs={state.tournament.activeRuns}
             evaluations={state.tournament.evaluations}
             agentModels={state.routing?.agentModels}
-          />
-
-          <RoutingDashboard routing={state.routing} />
-
-          <ProviderStatusCards
-            providers={engineStatus.providers ?? []}
-            groqRateLimit={engineStatus.groqRateLimit}
           />
 
           <div className="grid gap-6 xl:grid-cols-2">

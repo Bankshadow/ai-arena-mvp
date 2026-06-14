@@ -16,6 +16,7 @@ import { AGENT_PERSONAS } from "@/lib/agents/personas";
 
 import { Nav } from "@/components/Nav";
 import { AdminMockDashboard } from "@/components/admin/admin-mock-dashboard";
+import { AdminRoutingPanel } from "@/components/admin/admin-routing-panel";
 import { AdminTournamentSettings } from "@/components/admin/admin-tournament-settings";
 import { useTranslations } from "@/components/i18n/locale-provider";
 import { isSupabaseConfigured } from "@/lib/supabase";
@@ -207,6 +208,8 @@ export function AdminReviewPanel() {
         <AdminMockDashboard liveAvailable={adminReady} />
 
         <AdminTournamentSettings groqAvailable={groqAvailable} />
+
+        <AdminRoutingPanel />
 
         <AgentRunPanel />
 
