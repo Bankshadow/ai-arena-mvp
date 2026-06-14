@@ -103,6 +103,7 @@ export type ProviderUsageEntry = {
   estimatedCostUsd: number;
   latencyMs: number;
   timestamp: string;
+  status?: "success" | "cached" | "skipped" | "error";
 };
 
 export type TournamentRoutingMeta = {

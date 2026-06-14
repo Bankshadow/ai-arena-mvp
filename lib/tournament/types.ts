@@ -26,6 +26,9 @@ export type ChallengeIdea = {
   noveltyScore: number;
   feasibilityScore: number;
   selectionScore: number;
+  category?: string;
+  marketplacePotential?: number;
+  whyItMatters?: string;
 };
 
 export type Challenge = {
@@ -38,6 +41,11 @@ export type Challenge = {
   costLimitUsd: number;
   selectedFrom: CreatorAgentId;
   createdAt: string;
+  category?: string;
+  expectedOutput?: string;
+  scoringRubric?: string;
+  timeLimitMinutes?: number;
+  selectedReason?: string;
 };
 
 export type TournamentPhase =
@@ -132,6 +140,10 @@ export type LeaderboardEntry = {
   avgTokens: number;
   avgCost: number;
   trend: "up" | "down" | "flat";
+  qualityScore?: number;
+  efficiencyScore?: number;
+  marketplaceScore?: number;
+  penaltyTotal?: number;
 };
 
 export type MarketplaceCandidate = {

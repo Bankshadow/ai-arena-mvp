@@ -26,8 +26,14 @@ import {
   type LoopStep,
   type TournamentMode,
 } from "@/lib/tournament/engine";
-import { createSampleTournamentState } from "@/lib/tournament/sample-round";
+import { createSampleTournamentState, SAMPLE_TOURNAMENT_ROUND_ID } from "@/lib/tournament/sample-round";
+import {
+  buildFlowTimeline,
+  getTournamentViewMode,
+} from "@/lib/tournament/mission-control-demo";
 import { ScoreHelp } from "@/components/scoring/score-help";
+import { MissionControlRoutingSection } from "@/components/tournament/mission-control-routing-section";
+import { TournamentFlowTimeline } from "@/components/tournament/tournament-flow-timeline";
 import { DEFAULT_RUNTIME_MODE, type TournamentRuntimeMode } from "@/lib/tournament/routing/types";
 import {
   readTournamentAdminSettings,
@@ -90,14 +96,16 @@ export function TournamentView() {
         setRuntimeMode(effective);
         setState((s) => ({
           ...s,
-          routing: {
-            runtimeMode: effective,
-            guard: s.routing?.guard ?? null,
-            routingTimeline: s.routing?.routingTimeline ?? [],
-            providerUsage: s.routing?.providerUsage ?? [],
-            costSavedEstimateUsd: s.routing?.costSavedEstimateUsd ?? 0,
-            agentModels: s.routing?.agentModels ?? {},
-          },
+          routing: s.routing
+            ? { ...s.routing, runtimeMode: effective }
+            : {
+                runtimeMode: effective,
+                guard: null,
+                routingTimeline: [],
+                providerUsage: [],
+                costSavedEstimateUsd: 0,
+                agentModels: {},
+              },
         }));
       })
       .catch(() => {});
@@ -245,6 +253,9 @@ export function TournamentView() {
         ).id
       : null;
 
+  const viewMode = getTournamentViewMode(state, sampleMode);
+  const flowSteps = buildFlowTimeline(state);
+
   return (
     <div className="relative min-h-screen bg-[#030303] text-zinc-100">
       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(167,139,250,0.15),transparent)]" />
@@ -283,7 +294,7 @@ export function TournamentView() {
             </div>
             <div className="flex flex-wrap gap-2">
               <Link
-                href={`/tournaments/sample-round-executive-7`}
+                href={`/tournaments/${SAMPLE_TOURNAMENT_ROUND_ID}`}
                 className="rounded-lg border border-white/10 px-3 py-2 text-xs text-zinc-300 hover:bg-white/5"
               >
                 Full replay →
@@ -297,7 +308,7 @@ export function TournamentView() {
                 }}
                 className="rounded-lg border border-violet-500/40 bg-violet-500/10 px-3 py-2 text-xs text-violet-200"
               >
-                Clear & start fresh
+                Switch to live mode
               </button>
             </div>
           </div>
@@ -315,11 +326,28 @@ export function TournamentView() {
             persistMessage={persistMessage}
             engineMode={engineMode}
             runtimeMode={runtimeMode}
+            viewMode={viewMode}
             supabaseConfigured={engineStatus.supabaseConfigured}
             supabaseTableReady={engineStatus.supabaseTableReady}
             supabaseHint={engineStatus.supabaseHint}
             persistIsError={persistMessage?.startsWith("Supabase save failed") ?? false}
+            marketplaceCount={state.marketplace.length}
+            memoryLessons={state.memory?.lessons_updated}
+            busy={busy}
+            onRunNow={() => runStep("full")}
+            onReplay={() => {
+              setSampleMode(true);
+              setState(createSampleTournamentState());
+              setPersistMessage(null);
+            }}
+            onSwitchLive={() => {
+              setSampleMode(false);
+              setState(createInitialTournamentState());
+              setPersistMessage(null);
+            }}
           />
+
+          <TournamentFlowTimeline steps={flowSteps} />
 
           <AdminControls
             busy={busy}
@@ -398,10 +426,16 @@ export function TournamentView() {
             runs={state.tournament.activeRuns}
             evaluations={state.tournament.evaluations}
             agentModels={state.routing?.agentModels}
+            viewMode={viewMode}
+          />
+
+          <MissionControlRoutingSection
+            routing={state.routing}
+            groqAvailable={engineStatus.groqAvailable}
           />
 
           <div className="grid gap-6 xl:grid-cols-2">
-            <LiveLeaderboard entries={state.leaderboard} />
+            <LiveLeaderboard entries={state.leaderboard} viewMode={viewMode} />
             <MemoryTournamentPanel memory={state.memory} />
           </div>
 

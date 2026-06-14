@@ -44,21 +44,40 @@ export function SelectedChallengeCard({ challenge, idea, isRoundWinner = true }:
           {isRoundWinner ? "★ Featured challenge" : "Preview · challenge idea"}
         </p>
         <h3 className="mt-1 text-lg font-semibold text-white">{challenge.title}</h3>
-        <p className="mt-1 text-sm text-zinc-400">{challenge.brief}</p>
+        {challenge.category && (
+          <p className="mt-1 text-xs uppercase tracking-wider text-zinc-500">{challenge.category}</p>
+        )}
+        <p className="mt-2 text-sm text-zinc-400">{challenge.brief}</p>
       </div>
+
+      {challenge.selectedReason && isRoundWinner && (
+        <div className="border-b border-white/10 bg-black/20 px-5 py-3">
+          <p className="text-[10px] uppercase text-zinc-500">Selected reason</p>
+          <p className="mt-1 text-sm text-zinc-300">{challenge.selectedReason}</p>
+        </div>
+      )}
 
       {idea && (
         <div className="grid gap-3 border-b border-white/10 p-5 sm:grid-cols-3 text-sm">
           <Meta label="Selection score" value={String(idea.selectionScore)} />
           <Meta label="Novelty" value={String(idea.noveltyScore)} />
-          <Meta label="Feasibility" value={String(idea.feasibilityScore)} />
+          <Meta label="Marketplace potential" value={String(idea.marketplacePotential ?? "—")} />
         </div>
       )}
 
-      <div className="grid gap-3 p-5 sm:grid-cols-3 text-sm">
+      <div className="grid gap-3 p-5 sm:grid-cols-2 lg:grid-cols-3 text-sm">
         <Meta label="Creator" value={creator.name} />
         <Meta label="Pass gate" value={`${challenge.passThreshold}/100`} />
-        <Meta label="Cost cap" value={`$${challenge.costLimitUsd.toFixed(2)}`} />
+        <Meta label="Cost limit" value={`$${challenge.costLimitUsd.toFixed(2)}`} />
+        <Meta label="Time limit" value={`${challenge.timeLimitMinutes ?? 5} min`} />
+        <Meta
+          label="Expected output"
+          value={challenge.expectedOutput ?? challenge.outputFormat.replace(/\n/g, " · ")}
+        />
+        <Meta
+          label="Scoring rubric"
+          value={challenge.scoringRubric ?? "80% quality + 20% cost"}
+        />
       </div>
 
       <div className="border-t border-white/10 px-5 py-3">
@@ -88,7 +107,7 @@ function Meta({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-lg border border-white/10 bg-black/20 p-2">
       <p className="text-[10px] uppercase text-zinc-500">{label}</p>
-      <p className="font-mono text-sm text-zinc-200">{value}</p>
+      <p className="mt-0.5 text-sm leading-snug text-zinc-200">{value}</p>
     </div>
   );
 }

@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import type { Tournament, TournamentPhase } from "@/lib/tournament/types";
 import type { TournamentMode } from "@/lib/tournament/engine";
 import { getLoopIntervalMs } from "@/lib/tournament/engine";
@@ -6,6 +8,15 @@ import {
   RUNTIME_MODE_LABELS,
   type TournamentRuntimeMode,
 } from "@/lib/tournament/routing/types";
+import {
+  DEMO_COST_SAVED_USD,
+  DEMO_MARKETPLACE_COUNT,
+  DEMO_MEMORY_LESSONS,
+  DEMO_ROUND_ID,
+  DEMO_WINNER_AGENT,
+  DEMO_WINNER_SCORE,
+  type TournamentViewMode,
+} from "@/lib/tournament/mission-control-demo";
 
 const PHASE_LABELS: Record<TournamentPhase, string> = {
   idle: "Standby",
@@ -18,16 +29,29 @@ const PHASE_LABELS: Record<TournamentPhase, string> = {
   complete: "Round complete",
 };
 
+const VIEW_LABELS: Record<TournamentViewMode, string> = {
+  last_completed: "Last completed round",
+  live: "Live round",
+  standby: "Standby",
+};
+
 type Props = {
   tournament: Tournament;
   countdownSec: number | null;
   persistMessage: string | null;
   engineMode: TournamentMode;
   runtimeMode?: TournamentRuntimeMode;
+  viewMode?: TournamentViewMode;
   supabaseConfigured: boolean;
   supabaseTableReady: boolean;
   supabaseHint: string | null;
   persistIsError?: boolean;
+  marketplaceCount?: number;
+  memoryLessons?: number;
+  onRunNow?: () => void;
+  onReplay?: () => void;
+  onSwitchLive?: () => void;
+  busy?: boolean;
 };
 
 export function TournamentStatusCard({
@@ -36,13 +60,26 @@ export function TournamentStatusCard({
   persistMessage,
   engineMode,
   runtimeMode = DEFAULT_RUNTIME_MODE,
+  viewMode = "last_completed",
   supabaseConfigured,
   supabaseTableReady,
   supabaseHint,
   persistIsError,
+  marketplaceCount = DEMO_MARKETPLACE_COUNT,
+  memoryLessons = DEMO_MEMORY_LESSONS,
+  onRunNow,
+  onReplay,
+  onSwitchLive,
+  busy,
 }: Props) {
   const phaseLabel = PHASE_LABELS[tournament.phase];
   const intervalMin = getLoopIntervalMs() / 60000;
+  const winner =
+    [...tournament.evaluations].sort((a, b) => b.totalScore - a.totalScore)[0]?.agentName ??
+    DEMO_WINNER_AGENT;
+  const winnerScore =
+    [...tournament.evaluations].sort((a, b) => b.totalScore - a.totalScore)[0]?.totalScore ??
+    DEMO_WINNER_SCORE;
 
   return (
     <section className="glass-card overflow-hidden rounded-2xl border border-violet-500/20">
@@ -50,67 +87,37 @@ export function TournamentStatusCard({
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="font-mono text-xs uppercase tracking-[0.2em] text-violet-400/80">
-              Tournament Engine
+              Tournament Engine · {DEMO_ROUND_ID}
             </p>
             <h2 className="mt-1 text-xl font-semibold text-white">
-              Round {tournament.round || "—"} · {phaseLabel}
+              Round {tournament.round || 12} · {phaseLabel}
             </h2>
+            <p className="mt-1 text-sm text-cyan-300/90">
+              Current view: {VIEW_LABELS[viewMode]}
+            </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <span
-              className={`rounded-full border px-3 py-1 text-xs font-medium ${
-                tournament.paused
-                  ? "border-amber-500/40 bg-amber-500/10 text-amber-200"
-                  : "border-emerald-500/40 bg-emerald-500/10 text-emerald-200"
-              }`}
-            >
-              {tournament.paused ? "Paused" : "Auto loop active"}
-            </span>
-            <span
-              className={`rounded-full border px-3 py-1 text-xs font-medium ${
-                runtimeMode === "mock"
-                  ? "border-white/10 bg-white/5 text-zinc-400"
-                  : "border-cyan-500/40 bg-cyan-500/10 text-cyan-200"
-              }`}
-            >
-              {RUNTIME_MODE_LABELS[runtimeMode]}
-            </span>
-            <span
-              className={`rounded-full border px-3 py-1 text-xs font-medium ${
-                engineMode === "live"
-                  ? "border-violet-500/40 bg-violet-500/10 text-violet-300"
-                  : "border-white/10 bg-white/5 text-zinc-500"
-              }`}
-            >
-              {engineMode === "live" ? "API active" : "Offline"}
-            </span>
-            <span
-              className={`rounded-full border px-3 py-1 text-xs ${
-                supabaseConfigured && supabaseTableReady
-                  ? "border-emerald-500/30 bg-emerald-500/5 text-emerald-300/80"
-                  : supabaseConfigured
-                    ? "border-amber-500/40 bg-amber-500/10 text-amber-200"
-                    : "border-zinc-700 bg-zinc-900/50 text-zinc-500"
-              }`}
-            >
-              Supabase{" "}
-              {!supabaseConfigured
-                ? "off"
-                : supabaseTableReady
-                  ? "ready"
-                  : "table missing"}
-            </span>
+            <Badge
+              label={tournament.paused ? "Paused" : "Auto loop active"}
+              tone={tournament.paused ? "amber" : "emerald"}
+            />
+            <Badge label={RUNTIME_MODE_LABELS[runtimeMode]} tone="cyan" />
+            <Badge label={engineMode === "live" ? "API active" : "Offline"} tone="neutral" />
+            <Badge
+              label={`Supabase ${!supabaseConfigured ? "off" : supabaseTableReady ? "ready" : "table missing"}`}
+              tone={supabaseConfigured && supabaseTableReady ? "emerald" : "neutral"}
+            />
           </div>
         </div>
       </div>
 
-      <div className="grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 border-b border-white/10 p-5 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
         <Stat label="Loop interval" value={`${intervalMin} min`} />
         <Stat
           label="Next run"
           value={
             tournament.paused
-              ? "—"
+              ? "Manual"
               : countdownSec !== null
                 ? `${Math.floor(countdownSec / 60)}:${String(countdownSec % 60).padStart(2, "0")}`
                 : "Manual"
@@ -119,6 +126,29 @@ export function TournamentStatusCard({
         />
         <Stat label="Last completed" value={formatTime(tournament.completedAt)} />
         <Stat label="Active runs" value={String(tournament.activeRuns.length)} />
+        <Stat label="Winner" value={winner} />
+        <Stat label="Final score" value={`${winnerScore.toFixed(0)}`} highlight />
+      </div>
+
+      {viewMode === "last_completed" && (
+        <div className="grid gap-3 border-b border-white/10 bg-black/20 p-5 sm:grid-cols-2 lg:grid-cols-4">
+          <DemoStat label="Selected challenge" value="Executive Summary Battle" />
+          <DemoStat label="Cost saved vs all-Claude" value={`$${DEMO_COST_SAVED_USD.toFixed(2)}`} />
+          <DemoStat label="Marketplace candidates" value={String(marketplaceCount)} />
+          <DemoStat label="Memory lessons" value={String(memoryLessons)} />
+        </div>
+      )}
+
+      <div className="flex flex-wrap gap-2 border-b border-white/10 px-5 py-4">
+        <ActionButton onClick={onRunNow} disabled={busy} primary>
+          Run tournament now
+        </ActionButton>
+        <ActionButton onClick={onReplay} disabled={busy}>
+          Replay last round
+        </ActionButton>
+        <ActionButton onClick={onSwitchLive} disabled={busy}>
+          Switch to live mode
+        </ActionButton>
       </div>
 
       {supabaseConfigured && !supabaseTableReady && supabaseHint && (
@@ -140,6 +170,26 @@ export function TournamentStatusCard({
   );
 }
 
+function Badge({
+  label,
+  tone,
+}: {
+  label: string;
+  tone: "emerald" | "amber" | "cyan" | "neutral";
+}) {
+  const styles = {
+    emerald: "border-emerald-500/40 bg-emerald-500/10 text-emerald-200",
+    amber: "border-amber-500/40 bg-amber-500/10 text-amber-200",
+    cyan: "border-cyan-500/40 bg-cyan-500/10 text-cyan-200",
+    neutral: "border-white/10 bg-white/5 text-zinc-400",
+  };
+  return (
+    <span className={`rounded-full border px-3 py-1 text-xs font-medium ${styles[tone]}`}>
+      {label}
+    </span>
+  );
+}
+
 function Stat({
   label,
   value,
@@ -156,6 +206,42 @@ function Stat({
         {value}
       </p>
     </div>
+  );
+}
+
+function DemoStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-cyan-500/15 bg-cyan-500/5 p-3">
+      <p className="text-[10px] uppercase text-zinc-500">{label}</p>
+      <p className="mt-1 text-sm font-medium text-zinc-200">{value}</p>
+    </div>
+  );
+}
+
+function ActionButton({
+  children,
+  onClick,
+  disabled,
+  primary,
+}: {
+  children: ReactNode;
+  onClick?: () => void;
+  disabled?: boolean;
+  primary?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={`rounded-lg px-3 py-2 text-xs font-medium transition disabled:opacity-50 ${
+        primary
+          ? "border border-violet-500/40 bg-violet-500/15 text-violet-100 hover:bg-violet-500/25"
+          : "border border-white/10 text-zinc-300 hover:bg-white/5"
+      }`}
+    >
+      {children}
+    </button>
   );
 }
 

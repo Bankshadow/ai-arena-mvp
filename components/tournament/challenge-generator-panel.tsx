@@ -51,11 +51,26 @@ export function ChallengeGeneratorPanel({
                   <div className="min-w-0 flex-1">
                     <p className="text-xs text-violet-300">{idea.creatorName}</p>
                     <p className="font-medium text-zinc-100">{idea.title}</p>
+                    {idea.category && (
+                      <p className="mt-0.5 text-[10px] uppercase tracking-wider text-zinc-500">
+                        {idea.category}
+                      </p>
+                    )}
                     <p className="mt-1 text-xs text-zinc-500">{idea.brief}</p>
+                    {idea.whyItMatters && (
+                      <p className="mt-2 text-[11px] leading-relaxed text-zinc-600">
+                        {idea.whyItMatters}
+                      </p>
+                    )}
                   </div>
                   <div className="text-right">
                     <p className="font-mono text-lg text-amber-300">{idea.selectionScore}</p>
                     <p className="text-[10px] uppercase text-zinc-500">select score</p>
+                    {idea.marketplacePotential != null && (
+                      <p className="mt-1 font-mono text-xs text-emerald-400/90">
+                        MKT {idea.marketplacePotential}
+                      </p>
+                    )}
                   </div>
                 </div>
                 <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px]">

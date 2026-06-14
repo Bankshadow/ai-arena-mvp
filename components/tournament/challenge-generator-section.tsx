@@ -34,9 +34,12 @@ export function ChallengeGeneratorSection({
     ideas.find((idea) => idea.id === activePreviewId) ??
     (roundSelectedId ? ideas.find((idea) => idea.id === roundSelectedId) : undefined);
 
-  const displayChallenge = previewIdea
-    ? buildChallengePreviewFromIdea(previewIdea)
-    : selectedChallenge;
+  const displayChallenge =
+    previewIdea && previewIdea.id === roundSelectedId && selectedChallenge
+      ? selectedChallenge
+      : previewIdea
+        ? buildChallengePreviewFromIdea(previewIdea)
+        : selectedChallenge;
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">

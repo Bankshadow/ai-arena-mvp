@@ -1,7 +1,7 @@
 import {
-  createInitialTournamentState,
-  runTournamentLoop,
-} from "@/lib/tournament/engine";
+  createMissionControlDemoState,
+  enrichMissionControlDemo,
+} from "@/lib/tournament/mission-control-demo";
 import {
   buildSavedTournamentRecord,
   toTournamentListItem,
@@ -12,42 +12,7 @@ export const SAMPLE_TOURNAMENT_ROUND_ID = "sample-round-executive-7";
 
 /** Completed mock tournament round for replay / sample mode. */
 export function createSampleTournamentState(): TournamentState {
-  const base = createInitialTournamentState();
-  const result = runTournamentLoop(base, "full");
-  return {
-    tournament: { ...result.tournament, paused: true },
-    leaderboard: result.leaderboard,
-    history: result.history,
-    marketplace: result.marketplace,
-    routing: {
-      runtimeMode: "groq_free",
-      guard: null,
-      routingTimeline: [
-        {
-          step: "challenge_generation",
-          taskType: "challenge_generation",
-          provider: "groq",
-          model: "llama-3.1-8b-instant",
-          timestamp: new Date().toISOString(),
-        },
-        {
-          step: "competitor_run",
-          taskType: "competitor_run",
-          provider: "groq",
-          model: "llama-3.1-8b-instant",
-          timestamp: new Date().toISOString(),
-        },
-      ],
-      providerUsage: [],
-      costSavedEstimateUsd: 0.018,
-      agentModels: {
-        lean: "llama-3.1-8b-instant",
-        premium: "llama-3.3-70b-versatile",
-      },
-    },
-    constitution: result.constitution,
-    memory: result.memory,
-  };
+  return createMissionControlDemoState();
 }
 
 export function getSampleTournamentRecord() {
@@ -58,4 +23,15 @@ export function getSampleTournamentRecord() {
 
 export function getSampleTournamentListItem() {
   return toTournamentListItem(getSampleTournamentRecord());
+}
+
+/** Re-enrich any partial state so mission control panels stay populated. */
+export function ensureMissionControlDemo(state: TournamentState): TournamentState {
+  if (
+    state.tournament.challengeIdeas.length === 0 &&
+    state.tournament.activeRuns.length === 0
+  ) {
+    return createSampleTournamentState();
+  }
+  return enrichMissionControlDemo(state);
 }

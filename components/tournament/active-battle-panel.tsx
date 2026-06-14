@@ -1,46 +1,94 @@
 import type { AgentRun, Evaluation } from "@/lib/tournament/types";
+import type { TournamentViewMode } from "@/lib/tournament/mission-control-demo";
 
 type Props = {
   runs: AgentRun[];
   evaluations: Evaluation[];
   agentModels?: Record<string, string>;
+  viewMode?: TournamentViewMode;
 };
 
 function modelBadge(agentId: string, modelUsed: string, agentModels?: Record<string, string>) {
   const routed = agentModels?.[agentId];
-  if (routed) {
-    return (
-      <span className="mt-1 inline-block rounded bg-violet-500/15 px-1.5 py-0.5 font-mono text-[10px] text-violet-300">
-        {routed}
-      </span>
-    );
-  }
-  return <p className="text-xs text-zinc-500">{modelUsed}</p>;
-}
-
-function constitutionBadge(run: AgentRun) {
-  if (!run.constitutionVersion) return null;
+  const label = routed ?? modelUsed;
   return (
-    <span className="mt-1 inline-block rounded border border-cyan-500/30 bg-cyan-500/10 px-1.5 py-0.5 font-mono text-[10px] text-cyan-300">
-      {run.constitutionVersion}
+    <span className="mt-1 inline-block rounded bg-violet-500/15 px-1.5 py-0.5 font-mono text-[10px] text-violet-300">
+      {label}
     </span>
   );
 }
 
-export function ActiveBattlePanel({ runs, evaluations, agentModels }: Props) {
+export function ActiveBattlePanel({ runs, evaluations, agentModels, viewMode }: Props) {
   const evalByRun = new Map(evaluations.map((e) => [e.runId, e]));
+  const allComplete = runs.length > 0 && runs.every((r) => evalByRun.has(r.id));
+  const completedMode = viewMode === "last_completed" || allComplete;
 
   return (
     <section className="glass-card overflow-hidden rounded-2xl">
       <div className="border-b border-white/10 px-5 py-4">
         <h3 className="text-sm font-semibold uppercase tracking-wider text-zinc-400">
-          4 · Active battle
+          4 · {completedMode ? "Last completed agent runs" : "Active battle"}
         </h3>
-        <p className="text-xs text-zinc-500">5 competitor agents · 2 judges (mock)</p>
+        <p className="text-xs text-zinc-500">
+          {completedMode
+            ? "5 competitor agents · completed · 2 judges (mock)"
+            : "5 competitor agents · 2 judges (mock)"}
+        </p>
       </div>
 
       {runs.length === 0 ? (
-        <p className="p-8 text-center text-sm text-zinc-600">No active runs</p>
+        <p className="p-8 text-center text-sm text-zinc-600">No agent runs yet — run a tournament loop.</p>
+      ) : completedMode ? (
+        <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3">
+          {runs.map((run) => {
+            const ev = evalByRun.get(run.id);
+            return (
+              <article
+                key={run.id}
+                className={`rounded-xl border p-4 ${
+                  ev?.passed
+                    ? "border-emerald-500/25 bg-emerald-500/5"
+                    : "border-white/10 bg-black/20"
+                }`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="font-medium text-zinc-100">{run.agentName}</p>
+                    {modelBadge(run.agentId, run.modelUsed, agentModels)}
+                  </div>
+                  <span
+                    className={`rounded-full border px-2 py-0.5 text-[10px] uppercase ${
+                      ev?.passed
+                        ? "border-emerald-500/40 text-emerald-300"
+                        : "border-red-500/40 text-red-300"
+                    }`}
+                  >
+                    {ev?.passed ? "completed" : "failed"}
+                  </span>
+                </div>
+                <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                  <Stat label="Score" value={ev ? ev.totalScore.toFixed(1) : "—"} accent />
+                  <Stat
+                    label="Tokens"
+                    value={(run.tokensIn + run.tokensOut).toLocaleString()}
+                  />
+                  <Stat label="Cost" value={`$${run.costUsd.toFixed(3)}`} />
+                  <Stat label="Latency" value={`${(run.latencyMs / 1000).toFixed(1)}s`} />
+                </dl>
+                <p className="mt-3 text-[11px] leading-relaxed text-zinc-500">
+                  {run.promptStrategySummary ??
+                    ev?.efficiencyJudgeNotes ??
+                    "Single-pass structured brief workflow."}
+                </p>
+                {ev && ev.penaltyTotal < 0 && (
+                  <p className="mt-2 text-[10px] text-red-400/90">
+                    Penalty {ev.penaltyTotal} pts applied
+                  </p>
+                )}
+              </article>
+            );
+          })}
+        </div>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full min-w-[640px] text-sm">
@@ -62,10 +110,7 @@ export function ActiveBattlePanel({ runs, evaluations, agentModels }: Props) {
                   <tr key={run.id} className="border-t border-white/5 hover:bg-white/[0.02]">
                     <td className="px-4 py-3">
                       <p className="font-medium text-zinc-200">{run.agentName}</p>
-                      <div className="flex flex-wrap gap-1">
-                        {modelBadge(run.agentId, run.modelUsed, agentModels)}
-                        {constitutionBadge(run)}
-                      </div>
+                      {modelBadge(run.agentId, run.modelUsed, agentModels)}
                     </td>
                     <td className="px-4 py-3">
                       {live ? (
@@ -99,5 +144,22 @@ export function ActiveBattlePanel({ runs, evaluations, agentModels }: Props) {
         </div>
       )}
     </section>
+  );
+}
+
+function Stat({
+  label,
+  value,
+  accent,
+}: {
+  label: string;
+  value: string;
+  accent?: boolean;
+}) {
+  return (
+    <div>
+      <dt className="text-zinc-600">{label}</dt>
+      <dd className={`font-mono ${accent ? "text-emerald-300" : "text-zinc-300"}`}>{value}</dd>
+    </div>
   );
 }

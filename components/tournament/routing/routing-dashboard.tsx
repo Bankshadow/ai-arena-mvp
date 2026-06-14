@@ -80,11 +80,13 @@ export function RoutingDashboard({ routing }: Props) {
               <thead className="text-left text-zinc-500">
                 <tr>
                   <th className="pb-2">Time</th>
-                  <th className="pb-2">Provider</th>
                   <th className="pb-2">Task</th>
+                  <th className="pb-2">Provider</th>
+                  <th className="pb-2">Model</th>
                   <th className="pb-2 text-right">Tokens</th>
                   <th className="pb-2 text-right">Cost</th>
                   <th className="pb-2 text-right">Latency</th>
+                  <th className="pb-2">Status</th>
                 </tr>
               </thead>
               <tbody>
@@ -122,13 +124,24 @@ function TimelineRow({ entry }: { entry: RoutingTimelineEntry }) {
 }
 
 function UsageRow({ row }: { row: ProviderUsageEntry }) {
+  const status = row.status ?? "success";
+  const statusStyle =
+    status === "success"
+      ? "text-emerald-400"
+      : status === "cached"
+        ? "text-cyan-400"
+        : status === "skipped"
+          ? "text-zinc-500"
+          : "text-red-400";
+
   return (
     <tr className="border-t border-white/5">
       <td className="py-2 text-zinc-500">
         {new Date(row.timestamp).toLocaleTimeString()}
       </td>
-      <td className="py-2 font-mono text-cyan-300">{row.provider}</td>
       <td className="py-2 text-zinc-400">{row.taskType.replace(/_/g, " ")}</td>
+      <td className="py-2 font-mono text-cyan-300">{row.provider}</td>
+      <td className="py-2 text-zinc-500">{row.model}</td>
       <td className="py-2 text-right font-mono text-violet-300">
         {(row.inputTokens + row.outputTokens).toLocaleString()}
       </td>
@@ -136,6 +149,7 @@ function UsageRow({ row }: { row: ProviderUsageEntry }) {
         ${row.estimatedCostUsd.toFixed(4)}
       </td>
       <td className="py-2 text-right text-zinc-500">{row.latencyMs}ms</td>
+      <td className={`py-2 text-xs capitalize ${statusStyle}`}>{status}</td>
     </tr>
   );
 }
